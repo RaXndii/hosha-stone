@@ -1,0 +1,446 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@property --glint {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #03020d;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  background: #03020d;
+  color: #f4f2f7;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+body.is-loading {
+  overflow: hidden;
+}
+
+::selection {
+  background: #b9a0dd;
+  color: #05041a;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  /* width 0, not `none`: `none` would beat Tailwind's border utilities and
+     silently strip the outline off every bordered control */
+  border: 0 solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+@layer components {
+  /* thin chromatic edge used on the top-bar controls */
+  .irid {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.055),
+      rgba(255, 255, 255, 0.012) 55%,
+      rgba(255, 255, 255, 0.03)
+    );
+  }
+
+  .irid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from var(--glint),
+      rgba(236, 156, 214, 0.5),
+      rgba(148, 176, 255, 0.45),
+      rgba(158, 245, 219, 0.36),
+      rgba(255, 199, 158, 0.44),
+      rgba(236, 156, 214, 0.5)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0.42;
+    transition: opacity 400ms cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+
+  .irid:hover::before,
+  .irid.is-glinting::before {
+    opacity: 0.95;
+  }
+
+  /* a highlight travels once around the edge */
+  .irid.is-glinting::before,
+  .irid:hover::before {
+    animation: glint-travel 1.5s cubic-bezier(0.4, 0, 0.3, 1);
+  }
+
+  /* ------------------------------------------------------------------
+     One interaction language, inherited by every control in HOT ONES.
+     idle -> recognition -> interaction, in that order, always the same
+     curve. The highlight blooms from wherever the pointer actually is
+     (see useSpotlight) rather than from the middle of the element.
+     ------------------------------------------------------------------ */
+  .vx {
+    position: relative;
+    isolation: isolate;
+    --sx: 50%;
+    --sy: 50%;
+    transition:
+      transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 300ms ease,
+      box-shadow 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .vx::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    /* the two glow colours are variables so a page can tint every control
+       with its own accent; the defaults are HOT ONES' aqua and violet */
+    background: radial-gradient(
+      circle at var(--sx) var(--sy),
+      rgb(var(--vx-a, 127 212 216) / 0.22) 0%,
+      rgb(var(--vx-b, 150 120 225) / 0.12) 38%,
+      transparent 72%
+    );
+    opacity: 0;
+    transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .vx:hover,
+  .vx:focus-visible {
+    transform: translateY(-1px) scale(1.018);
+  }
+
+  .vx:hover::before,
+  .vx:focus-visible::before,
+  .vx[data-active='true']::before {
+    opacity: 1;
+  }
+
+  .vx:active {
+    transform: translateY(0) scale(0.985);
+    transition-duration: 120ms;
+  }
+
+  /* touch has no hover, so the same recognition arrives on contact */
+  @media (hover: none) {
+    .vx:active::before {
+      opacity: 1;
+    }
+  }
+
+  /* soft highlight passing across a surface */
+  .sweep::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      105deg,
+      transparent 38%,
+      rgba(255, 255, 255, 0.13) 50%,
+      transparent 62%
+    );
+    transform: translate3d(-130%, 0, 0);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .sweep:hover::after,
+  .sweep.is-sweeping::after {
+    animation: surface-sweep 820ms cubic-bezier(0.3, 0, 0.2, 1);
+  }
+}
+
+@keyframes glint-travel {
+  from {
+    --glint: 0deg;
+  }
+  to {
+    --glint: 360deg;
+  }
+}
+
+@keyframes surface-sweep {
+  0% {
+    transform: translate3d(-130%, 0, 0);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(130%, 0, 0);
+    opacity: 0;
+  }
+}
+
+/* slow, unsynchronised drift so the purple atmosphere never feels looped */
+@keyframes haze-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(-3%, 2%, 0) scale(1.12);
+    opacity: 0.85;
+  }
+}
+
+@keyframes haze-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.08);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate3d(4%, -3%, 0) scale(0.94);
+    opacity: 0.7;
+  }
+}
+
+/* alive, on purpose: a real orbit with enough range that the eye catches it
+   without watching for it, on unequal periods so the two never sync up */
+@keyframes drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.42; }
+  25% { transform: translate3d(7%, -9%, 0) scale(1.22); opacity: 0.78; }
+  50% { transform: translate3d(12%, 2%, 0) scale(1.34); opacity: 0.95; }
+  75% { transform: translate3d(4%, 10%, 0) scale(1.12); opacity: 0.68; }
+}
+
+@keyframes drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.08); opacity: 0.3; }
+  25% { transform: translate3d(-9%, 6%, 0) scale(0.88); opacity: 0.62; }
+  50% { transform: translate3d(-13%, -4%, 0) scale(1.18); opacity: 0.82; }
+  75% { transform: translate3d(-5%, -11%, 0) scale(0.96); opacity: 0.5; }
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.32; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.22); }
+}
+
+/* showroom: overhead light falling through haze. Each shaft sways and
+   breathes on its own period, so the room never settles into a loop. */
+@keyframes shaft-sway {
+  0%, 100% { transform: translate3d(0, 0, 0) skewX(-6deg); opacity: 0.55; }
+  50% { transform: translate3d(2.5%, 0, 0) skewX(-3deg); opacity: 1; }
+}
+
+@keyframes shaft-sway-b {
+  0%, 100% { transform: translate3d(0, 0, 0) skewX(5deg); opacity: 0.8; }
+  50% { transform: translate3d(-3%, 0, 0) skewX(8deg); opacity: 0.4; }
+}
+
+@keyframes grain-shift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(-1.5%, -1%, 0);
+  }
+  40% {
+    transform: translate3d(1%, 1.5%, 0);
+  }
+  60% {
+    transform: translate3d(-1%, 1%, 0);
+  }
+  80% {
+    transform: translate3d(1.5%, -1.5%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Over the case a mouse's cursor is replaced by the "Look" ring (useShowcase).
+   Only a fine pointer that can hover loses it — touch never sees a cursor —
+   and a control set into the case gets the ordinary pointer back. */
+@media (hover: hover) and (pointer: fine) {
+  .showcase-zone {
+    cursor: none;
+  }
+  .showcase-zone [data-native-cursor] {
+    cursor: pointer;
+  }
+}
+
+/* the plinth stage: mist that never quite settles, and a neon edge that
+   breathes so slowly it reads as light, not animation */
+@keyframes fog-drift {
+  0%, 100% { transform: translate3d(-3%, 0, 0) scale(1); opacity: 0.75; }
+  50% { transform: translate3d(3%, -2%, 0) scale(1.06); opacity: 1; }
+}
+
+@keyframes fog-drift-b {
+  0%, 100% { transform: translate3d(4%, 1%, 0) scale(1.04); opacity: 0.85; }
+  50% { transform: translate3d(-4%, -1%, 0) scale(0.96); opacity: 0.6; }
+}
+
+@keyframes neon-breathe {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+
+/* ------------------------------------------------------------------
+   LOOK CLOSER — a small atmospheric portal. Each cloud is an off-centre
+   radial gradient on a layer that only rotates and scales, so the vapour
+   swirls without a single repaint. Colours are the piece's own neon.
+   ------------------------------------------------------------------ */
+.vapor-cloud {
+  position: absolute;
+  inset: -17px;
+  pointer-events: none;
+  opacity: 0.85;
+  transition:
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.vapor-cloud > i {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  will-change: transform;
+}
+.vapor-cloud > i:nth-child(1) {
+  background: radial-gradient(circle at 30% 38%, rgb(var(--sr-neon) / 0.42), transparent 40%);
+  animation: vapor-turn 7s linear infinite;
+}
+.vapor-cloud > i:nth-child(2) {
+  background: radial-gradient(circle at 70% 64%, rgb(var(--sr-light) / 0.2), transparent 38%);
+  animation: vapor-turn 10s linear infinite reverse;
+}
+.vapor-cloud > i:nth-child(3) {
+  background: radial-gradient(circle at 52% 24%, rgb(var(--sr-neon) / 0.28), transparent 36%);
+  animation: vapor-breath 5.4s ease-in-out infinite;
+}
+/* a quicker current that only rises when a hand is near */
+.vapor-cloud > i:nth-child(4) {
+  background: radial-gradient(circle at 38% 72%, rgb(var(--sr-neon) / 0.36), transparent 36%);
+  animation: vapor-turn 3.8s linear infinite;
+  opacity: 0;
+  transition: opacity 700ms ease;
+}
+.group:hover .vapor-cloud,
+.group:focus-visible .vapor-cloud {
+  transform: scale(1.18);
+  opacity: 1;
+}
+.group:hover .vapor-cloud > i:nth-child(4),
+.group:focus-visible .vapor-cloud > i:nth-child(4) {
+  opacity: 1;
+}
+
+/* motes: a dot carried round the ring on a rotating, zero-size arm */
+.vapor-mote {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  animation: vapor-orbit 10s linear infinite;
+}
+.vapor-mote::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 9999px;
+  background: rgb(var(--sr-neon));
+  box-shadow: 0 0 4px rgb(var(--sr-neon) / 0.9);
+  transform: translateX(var(--mote-r, 17px));
+  animation: mote-flicker 3.2s ease-in-out infinite;
+}
+
+@keyframes vapor-turn {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.12); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes vapor-breath {
+  0%, 100% { transform: scale(0.88) rotate(0deg); opacity: 0.55; }
+  50% { transform: scale(1.16) rotate(40deg); opacity: 1; }
+}
+@keyframes vapor-orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes mote-flicker {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.9; }
+}
+
+/* the pixel heart rests, breathing by a pixel */
+.heart-float {
+  animation: heart-float 3.6s ease-in-out infinite;
+}
+@keyframes heart-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+/* phone: the portal keeps its clouds, loses the motes and the quick current */
+@media (max-width: 767px) {
+  .vapor-mote,
+  .vapor-cloud > i:nth-child(4) {
+    display: none;
+  }
+}
+
+/* the archive: over a piece a mouse's cursor becomes the "View" ring;
+   the heart keeps the ordinary pointer */
+@media (hover: hover) and (pointer: fine) {
+  .card-zone [data-card] {
+    cursor: none;
+  }
+  .card-zone [data-card] [data-native-cursor],
+  .card-zone [data-card] [data-native-cursor] * {
+    cursor: pointer;
+  }
+}
