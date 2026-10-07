@@ -1,0 +1,9 @@
+# Hosha Stone. The server answers this with an absolute sitemap address;
+# this copy stands when the site is served as plain files.
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /saved
+
+Sitemap: /sitemap.xml

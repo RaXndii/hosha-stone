@@ -1,7 +1,7 @@
 import { db, getContent } from './db.js'
 import { VIEWS } from './validate.js'
 import { deriveTheme } from './media.js'
-import { DEFAULT_ABOUT, DEFAULT_SETTINGS } from './seed.js'
+import { DEFAULT_ABOUT, DEFAULT_SETTINGS, DEFAULT_SIZE_GUIDE } from './seed.js'
 
 /**
  * Database rows → the product shape the site already speaks (see
@@ -80,6 +80,7 @@ export function publicCatalogue() {
     products,
     categories,
     about: getContent('about', DEFAULT_ABOUT),
+    sizeGuide: getContent('sizeGuide', DEFAULT_SIZE_GUIDE),
     settings: publicSettings(),
   }
 }

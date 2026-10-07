@@ -1,5 +1,6 @@
 import { PRODUCTS, setCatalogue } from '../data/showroom.js'
 import { setOrderSettings } from '../data/order.js'
+import { setSizeGuide } from '../data/sizeGuide.js'
 
 /**
  * Start-up: ask the server for the published catalogue and install it. If no
@@ -27,9 +28,10 @@ const getJson = async (url, ms = 6000) => {
 
 export async function loadCatalogue() {
   try {
-    const data = await getJson('./api/catalogue')
+    const data = await getJson('/api/catalogue')
     setCatalogue({ ...data, source: 'server' })
     if (data.settings) setOrderSettings(data.settings)
+    if (data.sizeGuide) setSizeGuide(data.sizeGuide)
   } catch {
     // no server: the bundled catalogue stays in place
   }
@@ -37,12 +39,12 @@ export async function loadCatalogue() {
   const m = window.location.hash.match(/^#\/preview\/(\d+)$/)
   if (m) {
     try {
-      const piece = await getJson(`./api/admin/products/${m[1]}/preview`)
+      const piece = await getJson(`/api/admin/products/${m[1]}/preview`)
       setCatalogue({ products: [piece, ...PRODUCTS.filter((p) => p.id !== piece.id)], source: 'server' })
       PREVIEW = piece
-      window.history.replaceState(null, '', `#/piece/${piece.id}`)
+      window.history.replaceState(null, '', `/piece/${piece.id}`)
     } catch {
-      window.history.replaceState(null, '', '#/')
+      window.history.replaceState(null, '', '/')
     }
   }
 }

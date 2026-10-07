@@ -226,7 +226,7 @@ function Sizes({ sizes, selected, onSelect, nudge }) {
  * open the order request; without one they ask for a size, and the sizes
  * answer with a ring. The heart beside it is a separate thing — a favourite.
  */
-export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave }) {
+export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, onSizeGuide }) {
   const [state, setState] = useState(null) // null | 'ask'
   const sizesRef = useRef(null)
   const btnRef = useRef(null)
@@ -298,8 +298,21 @@ export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave })
         </button>
       </div>
       </div>
-      <div ref={sizesRef}>
-        <Sizes sizes={product.sizes} selected={size} onSelect={onSize} nudge={state === 'ask' && !size} />
+      <div className="flex flex-col items-center lg:items-end">
+        <div ref={sizesRef}>
+          <Sizes sizes={product.sizes} selected={size} onSelect={onSize} nudge={state === 'ask' && !size} />
+        </div>
+        {onSizeGuide && (
+          <button
+            data-size
+            onClick={onSizeGuide}
+            className="group/guide relative mt-2 py-1 text-[8.5px] font-medium uppercase tracking-[0.28em] transition-colors duration-500 hover:text-[rgb(var(--sr-ink))]"
+            style={{ color: ink(0.42) }}
+          >
+            Size guide
+            <span className="absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 transition-transform duration-500 group-hover/guide:scale-x-100" style={{ background: ink(0.6) }} />
+          </button>
+        )}
       </div>
     </div>
   )

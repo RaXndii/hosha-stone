@@ -194,7 +194,7 @@ export function MobileMenu({ open, onClose, onNav, category, onCategory }) {
           </button>
         </div>
         <nav className="mt-14 flex flex-col gap-7">
-          {['browse', 'collections', 'about'].map((id) => (
+          {['browse', 'collections', 'story', 'saved'].map((id) => (
             <div key={id}>
               <button
                 onClick={() => (id === 'collections' ? setCats((c) => !c) : onNav(id))}
@@ -202,7 +202,7 @@ export function MobileMenu({ open, onClose, onNav, category, onCategory }) {
                 className="flex items-center gap-4 text-[1.6rem] font-light uppercase tracking-[0.22em]"
                 style={{ color: 'rgb(var(--sr-ink))' }}
               >
-                {id === 'browse' ? 'Browsing' : id}
+                {id === 'browse' ? 'Browsing' : id === 'saved' ? 'Kept' : id}
                 {id === 'collections' && <PlusMinus open={cats} className="h-3 w-3" />}
               </button>
               {id === 'collections' && (

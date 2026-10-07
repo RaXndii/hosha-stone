@@ -1,0 +1,14 @@
+{
+  "name": "Hosha Stone",
+  "short_name": "Hosha Stone",
+  "description": "A small number of garments each season. Simple. Never ordinary.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#03020d",
+  "theme_color": "#05041a",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

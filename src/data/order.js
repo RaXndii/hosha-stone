@@ -116,7 +116,7 @@ export function newRef() {
 export function recordOrder(o) {
   if (!o.ref) return
   try {
-    fetch('./api/orders', {
+    fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,

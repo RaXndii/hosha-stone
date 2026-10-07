@@ -8,6 +8,7 @@ import Orders from './pages/Orders.jsx'
 import Categories from './pages/Categories.jsx'
 import AboutPage from './pages/About.jsx'
 import Settings from './pages/Settings.jsx'
+import SizeGuidePage from './pages/SizeGuide.jsx'
 
 /**
  * Hosha Stone admin. The page itself is public, but it holds nothing: every
@@ -20,6 +21,7 @@ const NAV = [
   { id: 'orders', label: 'Orders' },
   { id: 'categories', label: 'Categories' },
   { id: 'about', label: 'About' },
+  { id: 'sizes', label: 'Size guide' },
   { id: 'settings', label: 'Settings' },
 ]
 
@@ -169,6 +171,7 @@ export default function AdminApp() {
   else if (section === 'orders') page = <Orders />
   else if (section === 'categories') page = <Categories />
   else if (section === 'about') page = <AboutPage />
+  else if (section === 'sizes') page = <SizeGuidePage />
   else if (section === 'settings') page = <Settings user={session.user} />
   else page = <Overview user={session.user} />
 

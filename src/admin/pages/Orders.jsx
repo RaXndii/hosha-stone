@@ -99,7 +99,7 @@ export default function Orders() {
                     className="mt-2 w-full bg-transparent px-3 py-2 text-[12.5px] outline-none placeholder:opacity-30"
                     style={{ color: C.ink, boxShadow: `inset 0 0 0 1px ${C.line2}` }}
                   />
-                  {o.slug && <a href={`/#/piece/${o.slug}`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] uppercase tracking-[0.26em]" style={{ color: C.ink3 }}>View piece ↗</a>}
+                  {o.slug && <a href={`/piece/${o.slug}`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] uppercase tracking-[0.26em]" style={{ color: C.ink3 }}>View piece ↗</a>}
                 </div>
               </div>
             )}

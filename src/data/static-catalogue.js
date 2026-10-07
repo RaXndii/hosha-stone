@@ -76,7 +76,7 @@ export const STATIC_PRODUCTS = [
     // was: the original value, shown struck above the price it costs now
     price: 58,
     was: 100,
-    hero: { src: './leather-hero.webp' },
+    hero: { src: '/leather-hero.webp' },
     sizes: [
       { label: 'XS', available: false },
       { label: 'S', available: true },
@@ -97,12 +97,12 @@ export const STATIC_PRODUCTS = [
       ink2: [152, 144, 148],
     },
     gallery: [
-      { id: 'front', label: 'Front view', kind: 'garment', src: './leather-hero.webp', angle: 0, turn: './tt/leather-front' },
-      { id: 'back', label: 'Back', kind: 'print', src: './leather-back.webp', focus: '50% 30%' },
-      { id: 'collar', label: 'Collar', kind: 'print', src: './leather-collar.webp', focus: '42% 60%' },
-      { id: 'zipper', label: 'Zipper', kind: 'print', src: './leather-zipper.webp', focus: '50% 50%' },
-      { id: 'pocket', label: 'Pocket', kind: 'print', src: './leather-pocket.webp', focus: '50% 50%' },
-      { id: 'grain', label: 'Leather grain', kind: 'print', src: './leather-texture.webp', focus: '50% 50%' },
+      { id: 'front', label: 'Front view', kind: 'garment', src: '/leather-hero.webp', angle: 0, turn: '/tt/leather-front' },
+      { id: 'back', label: 'Back', kind: 'print', src: '/leather-back.webp', focus: '50% 30%' },
+      { id: 'collar', label: 'Collar', kind: 'print', src: '/leather-collar.webp', focus: '42% 60%' },
+      { id: 'zipper', label: 'Zipper', kind: 'print', src: '/leather-zipper.webp', focus: '50% 50%' },
+      { id: 'pocket', label: 'Pocket', kind: 'print', src: '/leather-pocket.webp', focus: '50% 50%' },
+      { id: 'grain', label: 'Leather grain', kind: 'print', src: '/leather-texture.webp', focus: '50% 50%' },
     ],
   },
   {
@@ -117,7 +117,7 @@ export const STATIC_PRODUCTS = [
     short: 'Spring zip',
     tagline: 'A new season calls for a new presence.',
     price: 43,
-    hero: { src: './jacket-hero.webp' },
+    hero: { src: '/jacket-hero.webp' },
     sizes: [
       { label: 'S', available: false },
       { label: 'M', available: true },
@@ -137,10 +137,10 @@ export const STATIC_PRODUCTS = [
       ink2: [152, 144, 174],
     },
     gallery: [
-      { id: 'front', label: 'Front view', kind: 'garment', src: './jacket-hero.webp', angle: 0, turn: './tt/jacket-front' },
-      { id: 'back', label: 'Back view', kind: 'garment', src: './jacket-back.webp', angle: 180, turn: './tt/jacket-back' },
-      { id: 'side', label: 'Side view', kind: 'garment', src: './jacket-side.webp', angle: 270, turn: './tt/jacket-side' },
-      { id: 'zip', label: 'Zipper', kind: 'print', src: './detail-zip.webp', focus: '50% 45%' },
+      { id: 'front', label: 'Front view', kind: 'garment', src: '/jacket-hero.webp', angle: 0, turn: '/tt/jacket-front' },
+      { id: 'back', label: 'Back view', kind: 'garment', src: '/jacket-back.webp', angle: 180, turn: '/tt/jacket-back' },
+      { id: 'side', label: 'Side view', kind: 'garment', src: '/jacket-side.webp', angle: 270, turn: '/tt/jacket-side' },
+      { id: 'zip', label: 'Zipper', kind: 'print', src: '/detail-zip.webp', focus: '50% 45%' },
     ],
   },
   {
@@ -157,7 +157,7 @@ export const STATIC_PRODUCTS = [
     short: 'Hoodie',
     tagline: "It's an aesthetic.",
     price: 15,
-    hero: { src: './hoodie-hero.webp' },
+    hero: { src: '/hoodie-hero.webp' },
     was: 25,
     sizes: [
       { label: 'S', available: true },
@@ -178,8 +178,8 @@ export const STATIC_PRODUCTS = [
       ink2: [176, 166, 152],
     },
     gallery: [
-      { id: 'front', label: 'Front view', kind: 'garment', src: './hoodie-hero.webp', angle: 0, turn: './tt/hoodie-front' },
-      { id: 'back', label: 'Back view', kind: 'garment', src: './hoodie-back.webp', angle: 180, turn: './tt/hoodie-back' },
+      { id: 'front', label: 'Front view', kind: 'garment', src: '/hoodie-hero.webp', angle: 0, turn: '/tt/hoodie-front' },
+      { id: 'back', label: 'Back view', kind: 'garment', src: '/hoodie-back.webp', angle: 180, turn: '/tt/hoodie-back' },
     ],
   },
   {
@@ -194,7 +194,7 @@ export const STATIC_PRODUCTS = [
     short: 'Navy zip',
     tagline: 'Quietly sharp.',
     price: 64,
-    hero: { src: './navy-hero.webp' },
+    hero: { src: '/navy-hero.webp' },
     sizes: [
       { label: 'S', available: true },
       { label: 'M', available: true },
@@ -217,10 +217,10 @@ export const STATIC_PRODUCTS = [
       ink2: [142, 154, 182],
     },
     gallery: [
-      { id: 'front', label: 'Front view', kind: 'garment', src: './navy-hero.webp', angle: 0, turn: './tt/navy-front' },
-      { id: 'back', label: 'Back view', kind: 'garment', src: './navy-back.webp', angle: 180, turn: './tt/navy-back' },
-      { id: 'left', label: 'Left side view', kind: 'garment', src: './navy-left.webp', angle: 90, turn: './tt/navy-left' },
-      { id: 'right', label: 'Right side view', kind: 'garment', src: './navy-right.webp', angle: 270, turn: './tt/navy-right' },
+      { id: 'front', label: 'Front view', kind: 'garment', src: '/navy-hero.webp', angle: 0, turn: '/tt/navy-front' },
+      { id: 'back', label: 'Back view', kind: 'garment', src: '/navy-back.webp', angle: 180, turn: '/tt/navy-back' },
+      { id: 'left', label: 'Left side view', kind: 'garment', src: '/navy-left.webp', angle: 90, turn: '/tt/navy-left' },
+      { id: 'right', label: 'Right side view', kind: 'garment', src: '/navy-right.webp', angle: 270, turn: '/tt/navy-right' },
     ],
   },
   {
@@ -236,7 +236,7 @@ export const STATIC_PRODUCTS = [
     description: 'A cotton Harrington with a stand collar, raglan sleeves and a check lining. Ribbed cuffs and hem, made to be worn in.',
     tagline: 'Worn in, never worn out.',
     price: 72,
-    hero: { src: './harrington-hero.webp' },
+    hero: { src: '/harrington-hero.webp' },
     sizes: [
       { label: 'S', available: true },
       { label: 'M', available: true },
@@ -259,12 +259,12 @@ export const STATIC_PRODUCTS = [
     },
     // five real angles, photographed turning to the left, and the collar up close
     gallery: [
-      { id: 'front', label: 'Front view', kind: 'garment', src: './harrington-front.webp', angle: 0, turn: './tt/harrington-front' },
-      { id: 'q-front', label: 'Three-quarter view', kind: 'garment', src: './harrington-q-front.webp', angle: 315, turn: './tt/harrington-q-front' },
-      { id: 'side', label: 'Side view', kind: 'garment', src: './harrington-side.webp', angle: 270, turn: './tt/harrington-side' },
-      { id: 'q-back', label: 'Three-quarter back', kind: 'garment', src: './harrington-q-back.webp', angle: 225, turn: './tt/harrington-q-back' },
-      { id: 'back', label: 'Back view', kind: 'garment', src: './harrington-back.webp', angle: 180, turn: './tt/harrington-back' },
-      { id: 'collar', label: 'Collar & lining', kind: 'print', src: './harrington-collar.webp', focus: '50% 40%' },
+      { id: 'front', label: 'Front view', kind: 'garment', src: '/harrington-front.webp', angle: 0, turn: '/tt/harrington-front' },
+      { id: 'q-front', label: 'Three-quarter view', kind: 'garment', src: '/harrington-q-front.webp', angle: 315, turn: '/tt/harrington-q-front' },
+      { id: 'side', label: 'Side view', kind: 'garment', src: '/harrington-side.webp', angle: 270, turn: '/tt/harrington-side' },
+      { id: 'q-back', label: 'Three-quarter back', kind: 'garment', src: '/harrington-q-back.webp', angle: 225, turn: '/tt/harrington-q-back' },
+      { id: 'back', label: 'Back view', kind: 'garment', src: '/harrington-back.webp', angle: 180, turn: '/tt/harrington-back' },
+      { id: 'collar', label: 'Collar & lining', kind: 'print', src: '/harrington-collar.webp', focus: '50% 40%' },
     ],
   },
 ]

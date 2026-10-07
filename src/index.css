@@ -289,6 +289,13 @@ button {
   }
 }
 
+/* the story: a mote falling down the rule, inviting the page to be read on */
+@keyframes story-cue {
+  0% { transform: translateY(-120%); opacity: 0; }
+  28% { opacity: 1; }
+  100% { transform: translateY(320%); opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

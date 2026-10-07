@@ -10,9 +10,10 @@ import { NextPiece, Pager, Purchase, Title } from './Info.jsx'
 import { MobileMenu, SearchSheet } from './Overlays.jsx'
 import Closer from './Closer.jsx'
 import { frameSrc, prefersLargeFrames } from './Turntable.jsx'
-import About from './About.jsx'
 import OrderPanel from './OrderPanel.jsx'
+import SizeGuide from './SizeGuide.jsx'
 import { usePage } from '../../lib/page.jsx'
+import { pageHead, pieceHead } from '../../lib/head.js'
 import { useShop } from '../../lib/shop.jsx'
 
 const LIGHT_ANCHOR = [0.5, 0.46]
@@ -37,7 +38,7 @@ function ready(product) {
  */
 export default function Showroom({ initialId, entry }) {
   const { go } = usePage()
-  const { bag, saved, toggleSaved } = useShop()
+  const { bag, saved, kept, toggleSaved } = useShop()
   const first = PRODUCTS.find((p) => p.id === initialId) ?? PRODUCTS[0]
   const arrival = useRef(entry)
   const rootRef = useRef(null)
@@ -56,6 +57,8 @@ export default function Showroom({ initialId, entry }) {
   const [overlay, setOverlay] = useState(null)
   // the order request for the piece on stage, in the size chosen
   const [ordering, setOrdering] = useState(false)
+  // what the piece measures — openable from the sizes, on stage or up close
+  const [guide, setGuide] = useState(false)
 
   // the room's colours are owned by GSAP after the first paint: these values
   // never change between renders, so React never writes over a tween
@@ -86,13 +89,21 @@ export default function Showroom({ initialId, entry }) {
   // the light, the ring and the piece's depth belong to the piece alone
   usePointerField(rootRef, { anchor: LIGHT_ANCHOR, zoneRef: stageRef })
   useSpotlight(rootRef)
-  useShowcase({ zoneRef: stageRef, cursorRef, parallaxRef, enabled: !closer && !overlay && !ordering })
+  useShowcase({ zoneRef: stageRef, cursorRef, parallaxRef, enabled: !closer && !overlay && !ordering && !guide })
 
+  // the address and the name in the tab follow the piece on stage. At the
+  // house's own address the house keeps its name: the showroom opens on a
+  // piece there, but the page is still the front door, not that piece.
   const firstPiece = useRef(true)
   useEffect(() => {
-    if (firstPiece.current) { firstPiece.current = false; return }
-    window.history.replaceState(null, '', `#/piece/${productId}`)
-  }, [productId])
+    if (firstPiece.current) {
+      firstPiece.current = false
+      if (window.location.pathname === '/') { pageHead('home'); return }
+    } else {
+      window.history.replaceState(null, '', `/piece/${productId}`)
+    }
+    pieceHead(product)
+  }, [productId, product])
 
   /* ------------------------------------------------------------ intro */
   useLayoutEffect(() => {
@@ -317,7 +328,7 @@ export default function Showroom({ initialId, entry }) {
   /* ------------------------------------------------------- keyboard */
   useEffect(() => {
     const onKey = (e) => {
-      if (overlay || closer || ordering) return
+      if (overlay || closer || ordering || guide) return
       if (e.target instanceof HTMLInputElement) return
       if (e.key === '/') { e.preventDefault(); setOverlay('search') }
       else if (e.key === 'ArrowRight') stepProduct(1)
@@ -325,16 +336,18 @@ export default function Showroom({ initialId, entry }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [overlay, closer, ordering, stepProduct])
+  }, [overlay, closer, ordering, guide, stepProduct])
 
   const goHome = () => {
     setOverlay(null)
     setCategory('all')
     if (PRODUCTS[0].id !== productId) requestProduct(PRODUCTS[0].id, -1)
   }
+  // Browsing, Kept and the Story are places; Collections opens where you are
   const onNav = (id) => {
-    if (id === 'browse') { setOverlay(null); go('browse') }
-    else setOverlay(id === overlay ? null : id)
+    if (id === 'collections') { setOverlay(id === overlay ? null : id); return }
+    setOverlay(null)
+    go(id)
   }
 
   return (
@@ -369,12 +382,12 @@ export default function Showroom({ initialId, entry }) {
           onNav={onNav}
           onSearch={() => setOverlay('search')}
           onMenu={() => setOverlay('menu')}
-          active={overlay === 'collections' ? 'collections' : overlay === 'about' ? 'about' : ''}
+          active={overlay === 'collections' ? 'collections' : ''}
           category={category}
           onCategory={pickCategory}
           onCloseCategories={() => setOverlay((o) => (o === 'collections' ? null : o))}
           bag={bag}
-          saved={saved.length}
+          saved={kept.length}
         />
       </div>
 
@@ -383,6 +396,8 @@ export default function Showroom({ initialId, entry }) {
           closer look, the change of piece, and the visitor's hand */}
       <div
         ref={stageRef}
+        id="main"
+        tabIndex={-1}
         onPointerDown={onStageDown}
         onPointerUp={onStageUp}
         className="showcase-zone absolute left-1/2 top-[12.5svh] z-10 h-[41svh] w-[min(88vw,46svh)] -translate-x-1/2 touch-pan-y lg:top-[18.5%] lg:h-[56%] lg:w-[min(36vw,62vh)] xl:w-[min(42vw,66vh)]"
@@ -424,7 +439,7 @@ export default function Showroom({ initialId, entry }) {
         <Pager pos={pos} total={n} dir={dir} />
       </div>
       <div data-fade-group className="relative z-20 order-2 px-6 pt-9 lg:absolute lg:bottom-[8.5%] lg:right-[max(3rem,4vw)] lg:p-0">
-        <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} dir={dir} saved={saved.includes(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
+        <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
       </div>
 
       <SearchSheet
@@ -446,7 +461,7 @@ export default function Showroom({ initialId, entry }) {
         onClose={() => setCloser(false)}
         sourceRef={stageRef}
         purchase={
-          <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} dir={dir} saved={saved.includes(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
+          <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
         }
       />
 
@@ -467,8 +482,8 @@ export default function Showroom({ initialId, entry }) {
       </div>
       <MobileMenu open={overlay === 'menu'} onClose={() => setOverlay(null)} onNav={onNav} category={category} onCategory={pickCategory} />
 
-      <About open={overlay === 'about'} onClose={() => setOverlay(null)} />
       <OrderPanel open={ordering} product={product} size={size} onClose={() => setOrdering(false)} />
+      <SizeGuide open={guide} product={product} onClose={() => setGuide(false)} />
     </div>
   )
 }

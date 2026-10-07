@@ -3,38 +3,70 @@ import gsap from 'gsap'
 import { PRODUCTS } from '../data/showroom.js'
 
 /**
- * Three places, no router library:
- *   #/             home — the showroom, opening on the first piece
- *   #/browse       the archive of every piece
- *   #/piece/<id>   the showroom, opening on that piece
+ * Five places, no router library:
+ *   /                  home — the showroom, opening on the first piece
+ *   /browse            the archive of every piece
+ *   /piece/<id>        the showroom, opening on that piece
+ *   /saved             the pieces this visitor kept
+ *   /story             the house, at length
  *
- * The hash keeps the back button and a shared link honest. A change of page
- * normally passes through a curtain so the site never cuts; a page that runs
- * its own exit (the archive carrying a piece into its room) asks for a cut
- * instead, and says where the visitor came from so the next page can pick up
- * the motion where the last one left it.
+ * Real paths, not fragments. A fragment never reaches the server, so every
+ * link would have arrived as the bare home page — one title, one picture, for
+ * the whole house. These are ordinary URLs: the server answers each one with
+ * the piece's own name and its own card (server/meta.js), which is what a link
+ * pasted into WhatsApp or Instagram actually shows. The back button and a
+ * shared link stay honest either way.
+ *
+ * Links shared before this change carried the piece in the fragment; those
+ * still land where they meant to (legacy(), below).
+ *
+ * A change of page normally passes through a curtain so the site never cuts; a
+ * page that runs its own exit (the archive carrying a piece into its room) asks
+ * for a cut instead, and says where the visitor came from so the next page can
+ * pick up the motion where the last one left it.
  */
 const RouteContext = createContext({ route: { name: 'home' }, go: () => {} })
 
-function parse() {
-  const h = window.location.hash.replace(/^#\/?/, '')
-  if (h === 'browse') return { name: 'browse' }
-  const m = h.match(/^piece\/([\w-]+)$/)
-  if (m && PRODUCTS.some((p) => p.id === m[1])) return { name: 'piece', id: m[1] }
+const PIECE = /^\/piece\/([\w-]+)\/?$/
+const known = (id) => PRODUCTS.some((p) => p.id === id)
+
+function parse(path = window.location.pathname) {
+  const clean = path.replace(/\/+$/, '') || '/'
+  if (clean === '/browse') return { name: 'browse' }
+  if (clean === '/saved') return { name: 'saved' }
+  if (clean === '/story') return { name: 'story' }
+  const m = clean.match(PIECE)
+  if (m && known(m[1])) return { name: 'piece', id: m[1] }
   return { name: 'home' }
 }
 
-const hashOf = (name, id) => (name === 'browse' ? '#/browse' : name === 'piece' ? `#/piece/${id}` : '#/')
+export const pathOf = (name, id) =>
+  name === 'browse' ? '/browse' : name === 'saved' ? '/saved' : name === 'story' ? '/story' : name === 'piece' ? `/piece/${id}` : '/'
+
 // home and a piece are the same page — the showroom; moving between them is not a page change
-const page = (r) => (r.name === 'browse' ? 'browse' : 'showroom')
+const page = (r) => (r.name === 'piece' || r.name === 'home' ? 'showroom' : r.name)
+
+/**
+ * A link made before the site had real paths — #/browse, #/piece/<id>. The
+ * fragment is read once, turned into the path it meant, and replaced, so an
+ * old link opens the right place and leaves a clean URL behind it.
+ */
+function legacy() {
+  const h = window.location.hash.replace(/^#\/?/, '')
+  if (!h) return null
+  const route = h === 'browse' ? { name: 'browse' } : h === 'saved' ? { name: 'saved' } : h === 'story' ? { name: 'story' } : null
+  const m = h.match(/^piece\/([\w-]+)$/)
+  const next = route ?? (m && known(m[1]) ? { name: 'piece', id: m[1] } : null)
+  if (!next) return null
+  window.history.replaceState(null, '', pathOf(next.name, next.id))
+  return next
+}
 
 export function PageProvider({ children }) {
-  const [route, setRoute] = useState(() => (typeof window === 'undefined' ? { name: 'home' } : parse()))
+  const [route, setRoute] = useState(() => (typeof window === 'undefined' ? { name: 'home' } : legacy() ?? parse()))
   const routeRef = useRef(route)
   const curtainRef = useRef(null)
   const busy = useRef(false)
-  // the next hashchange is one we caused, and how it should land
-  const pending = useRef(null)
 
   const commit = (next) => {
     routeRef.current = next
@@ -72,30 +104,24 @@ export function PageProvider({ children }) {
     })
   }, [])
 
-  // back/forward buttons and hand-edited hashes
+  // back and forward buttons
   useEffect(() => {
-    const onHash = () => {
-      const p = pending.current
-      pending.current = null
-      const next = parse()
-      const mine = p && p.route.name === next.name && (next.name !== 'piece' || p.route.id === next.id)
-      swap(mine ? p.route : next, { cut: !!(mine && p.cut) })
-    }
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    const onPop = () => swap(parse())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
   }, [swap])
 
   /**
    * go('browse') · go('piece', { id, entry: 'browse', cut: true }) · go('home')
    * entry travels with the route so the arriving page knows how it was entered
    */
-  const go = useCallback((name, { id, entry, cut = false } = {}) => {
+  const go = useCallback((name, { id, entry, cut = false, replace = false } = {}) => {
     const next = name === 'piece' ? { name, id, entry } : { name, entry }
-    const hash = hashOf(name, id)
-    if (window.location.hash !== hash) {
-      pending.current = { route: next, cut }
-      window.location.hash = hash
-    } else swap(next, { cut })
+    const path = pathOf(name, id)
+    if (window.location.pathname !== path) {
+      window.history[replace ? 'replaceState' : 'pushState'](null, '', path)
+    }
+    swap(next, { cut })
   }, [swap])
 
   return (

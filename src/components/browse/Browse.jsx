@@ -2,16 +2,22 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import gsap from 'gsap'
 import { ABOUT, CATEGORIES, PRODUCTS, countIn, pad2, themeVars } from '../../data/showroom.js'
 import { usePage } from '../../lib/page.jsx'
+import { pageHead } from '../../lib/head.js'
 import { useShop } from '../../lib/shop.jsx'
 import useSpotlight from '../../hooks/useSpotlight.js'
 import Header from '../showroom/Header.jsx'
 import { MobileMenu, SearchSheet } from '../showroom/Overlays.jsx'
-import About from '../showroom/About.jsx'
 import FavoriteButton from '../showroom/PixelHeart.jsx'
 import Lightning from './Lightning.jsx'
 
 /**
- * The archive: every piece in the house, in one quiet room.
+ * The archive: every piece in the house, in one quiet room — and, with
+ * `kept`, the same room holding only the pieces this visitor saved.
+ *
+ * The two are one page on purpose. What someone kept is the archive narrowed
+ * to their own choosing, so it should be the same room, the same cards, the
+ * same cursor, and the same way of carrying a piece into the showroom. Only
+ * the set of pieces and the words above them differ.
  *
  * Obsidian and charcoal, with purple only as light — a distant strike now and
  * then (Lightning), never a colour scheme. The pieces are the only bright
@@ -357,9 +363,9 @@ function useCardCursor(zoneRef, cursorRef, enabled) {
 
 /* ------------------------------------------------------------------ the page */
 
-export default function Browse() {
+export default function Browse({ kept = false }) {
   const { go } = usePage()
-  const { bag, saved, toggleSaved } = useShop()
+  const { bag, saved, kept: keptPieces, toggleSaved } = useShop()
   const rootRef = useRef(null)
   const gridRef = useRef(null)
   const cursorRef = useRef(null)
@@ -375,6 +381,9 @@ export default function Browse() {
 
   const setFilter = useCallback((k, v) => setFilters((f) => ({ ...f, [k]: v })), [])
   const list = useMemo(() => {
+    // kept: the visitor's own pieces, in the order the house lists them —
+    // their choosing is the only filter that applies
+    if (kept) return keptPieces
     const out = PRODUCTS.filter((p) =>
       (filters.category === 'all' || p.category === filters.category) &&
       (filters.season === 'all' || (p.season || 'all-season') === filters.season) &&
@@ -386,9 +395,13 @@ export default function Browse() {
     if (filters.sort === 'price-asc') out.sort((a, b) => a.price - b.price)
     if (filters.sort === 'price-desc') out.sort((a, b) => b.price - a.price)
     return out
-  }, [filters])
-  const signature = Object.keys(DEFAULTS).map((k) => filters[k]).join('|')
-  const filtered = signature !== Object.values(DEFAULTS).join('|')
+  }, [filters, kept, keptPieces])
+  // the grid re-lays-out when the filters change; on the kept page the set
+  // only ever loses a piece, which needs no new layout
+  const signature = kept ? 'kept' : Object.keys(DEFAULTS).map((k) => filters[k]).join('|')
+  const filtered = !kept && signature !== Object.values(DEFAULTS).join('|')
+
+  useEffect(() => { pageHead(kept ? 'saved' : 'browse') }, [kept])
 
   /* ---------------------------------------------- arrival */
   useLayoutEffect(() => {
@@ -473,16 +486,27 @@ export default function Browse() {
     const run = () => {
       const card = find()
       if (!card) { go('piece', { id }); return }
+
       card.scrollIntoView({ block: 'center' })
       window.setTimeout(() => select(PRODUCTS.find((p) => p.id === id), card), 380)
     }
     if (find()) run()
+    else if (kept) go('piece', { id })
     else { setFilters(DEFAULTS); window.setTimeout(run, 120) }
-  }, [go, select])
+  }, [go, select, kept])
 
   const onNav = (id) => {
-    if (id === 'browse') { setOverlay(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    else setOverlay(id === overlay ? null : id)
+    if (id === 'collections') { setOverlay(id === overlay ? null : id); return }
+    setOverlay(null)
+    // asking for the room you are already in means the top of it
+    if (id === (kept ? 'saved' : 'browse')) { window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    go(id)
+  }
+  // a collection is a view of the archive, so choosing one from the kept room goes there
+  const onCategory = (id) => {
+    setOverlay(null)
+    if (kept) { go('browse'); return }
+    setFilter('category', id)
   }
 
   return (
@@ -510,32 +534,36 @@ export default function Browse() {
           onNav={onNav}
           onSearch={() => setOverlay('search')}
           onMenu={() => setOverlay('menu')}
-          active={overlay === 'collections' ? 'collections' : overlay === 'about' ? 'about' : 'browse'}
+          active={overlay === 'collections' ? 'collections' : kept ? 'saved' : 'browse'}
           category={filters.category}
-          onCategory={(id) => { setFilter('category', id); setOverlay(null) }}
+          onCategory={onCategory}
           onCloseCategories={() => setOverlay((o) => (o === 'collections' ? null : o))}
           bag={bag}
-          saved={saved.length}
+          saved={keptPieces.length}
         />
       </div>
 
-      <main className="relative z-10 px-5 pb-16 lg:px-12">
+      <main id="main" tabIndex={-1} className="relative z-10 px-5 pb-16 lg:px-12">
         {/* title and filters */}
         <div data-browse-chrome className="relative z-20 flex flex-col gap-8 pt-6 lg:flex-row lg:items-end lg:justify-between lg:pt-10">
           <div>
-            <p data-browse-meta className="text-[10px] tracking-[0.34em]" style={{ color: ink(0.5) }}>
-              / {pad2(list.length ? 1 : 0)} — {pad2(list.length)}
-            </p>
+            {list.length > 0 && (
+              <p data-browse-meta className="text-[10px] tracking-[0.34em]" style={{ color: ink(0.5) }}>
+                / {pad2(1)} — {pad2(list.length)}
+              </p>
+            )}
             <h1 className="mt-4 overflow-hidden font-display text-[clamp(2.6rem,6vw,5rem)] font-normal uppercase leading-[0.95] tracking-[0.12em]">
-              <span data-title-line className="block">Archive</span>
+              <span data-title-line className="block">{kept ? 'Kept' : 'Archive'}</span>
             </h1>
             <p data-browse-meta className="mt-4 text-[10px] uppercase tracking-[0.34em]" style={{ color: ink(0.46) }}>
-              Every piece in the house. Choose one to enter its room.
+              {kept ? 'The pieces you kept, waiting where you left them.' : 'Every piece in the house. Choose one to enter its room.'}
             </p>
           </div>
-          <div data-browse-meta className="flex items-end justify-between gap-6">
-            <Filters filters={filters} setFilter={setFilter} />
-          </div>
+          {!kept && (
+            <div data-browse-meta className="flex items-end justify-between gap-6">
+              <Filters filters={filters} setFilter={setFilter} />
+            </div>
+          )}
         </div>
 
         {/* the pieces */}
@@ -556,9 +584,20 @@ export default function Browse() {
           ))}
           {list.length === 0 && (
             <div className="col-span-full py-24 text-center">
-              <p className="font-display text-xl italic" style={{ color: ink(0.6) }}>Nothing in the archive matches yet.</p>
-              <button onClick={() => setFilters(DEFAULTS)} className="mt-6 text-[10px] uppercase tracking-[0.3em] underline underline-offset-[6px]" style={{ color: ink(0.75) }}>
-                Clear the filters
+              <p className="font-display text-xl italic" style={{ color: ink(0.6) }}>
+                {kept ? 'Nothing kept yet.' : 'Nothing in the archive matches yet.'}
+              </p>
+              {kept && (
+                <p className="mx-auto mt-4 max-w-sm text-[10px] uppercase leading-[2] tracking-[0.3em]" style={{ color: ink(0.4) }}>
+                  The heart on a piece keeps it here, for whenever you come back.
+                </p>
+              )}
+              <button
+                onClick={() => (kept ? go('browse') : setFilters(DEFAULTS))}
+                className="mt-6 text-[10px] uppercase tracking-[0.3em] underline underline-offset-[6px]"
+                style={{ color: ink(0.75) }}
+              >
+                {kept ? 'Go to the archive' : 'Clear the filters'}
               </button>
             </div>
           )}
@@ -575,7 +614,7 @@ export default function Browse() {
                 Clear filters
               </button>
             )}
-            {pad2(list.length)} {list.length === 1 ? 'piece' : 'pieces'}
+            {list.length > 0 && `${pad2(list.length)} ${list.length === 1 ? 'piece' : 'pieces'}${kept ? ' kept' : ''}`}
           </span>
         </footer>
       </main>
@@ -601,16 +640,15 @@ export default function Browse() {
         open={overlay === 'search'}
         onClose={() => setOverlay(null)}
         onPick={pickFromSearch}
-        onCategory={(id) => { setFilter('category', id); setOverlay(null) }}
+        onCategory={onCategory}
       />
       <MobileMenu
         open={overlay === 'menu'}
         onClose={() => setOverlay(null)}
         onNav={onNav}
         category={filters.category}
-        onCategory={(id) => { setFilter('category', id); setOverlay(null) }}
+        onCategory={onCategory}
       />
-      <About open={overlay === 'about'} onClose={() => setOverlay(null)} />
     </div>
   )
 }

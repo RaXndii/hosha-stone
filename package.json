@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "card": "node scripts/share-card.mjs"
   },
   "dependencies": {
     "express": "^5.2.1",

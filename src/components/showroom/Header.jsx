@@ -8,7 +8,7 @@ import { PixelHeart } from './PixelHeart.jsx'
  * The favourites count: a small pixel heart that lights and pops when a piece
  * is saved. It lives in the header, so a save is acknowledged without a popup.
  */
-function Saved({ count, className = '' }) {
+function Saved({ count, className = '', onOpen }) {
   const ref = useRef(null)
   const last = useRef(count)
   useEffect(() => {
@@ -21,18 +21,18 @@ function Saved({ count, className = '' }) {
     last.current = count
   }, [count])
   return (
-    <span
-      role="status"
-      aria-label={count ? `${count} saved` : 'Nothing saved yet'}
-      title={count ? `${count} saved` : 'Saved pieces'}
-      className={`items-center gap-1.5 text-[10px] font-medium tabular-nums tracking-[0.1em] transition-colors duration-500 ${className}`}
+    <button
+      onClick={onOpen}
+      aria-label={count ? `Kept — ${count} ${count === 1 ? 'piece' : 'pieces'}` : 'Kept — nothing yet'}
+      title={count ? `${count} kept` : 'Kept'}
+      className={`items-center gap-1.5 text-[10px] font-medium tabular-nums tracking-[0.1em] transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] ${className}`}
       style={{ color: count ? 'rgb(var(--sr-ink) / 0.9)' : 'rgb(var(--sr-ink) / 0.45)' }}
     >
       <span ref={ref} className="block">
         <PixelHeart filled={count > 0} className="h-[11px] w-[12px]" />
       </span>
       <span className="min-w-[1ch]">{count || ''}</span>
-    </span>
+    </button>
   )
 }
 
@@ -208,7 +208,7 @@ function CategoryMenu({ open, category, onToggle, onClose, onPick }) {
 const LINKS = [
   { id: 'browse', label: 'Browsing' },
   { id: 'collections', label: 'Collections' },
-  { id: 'about', label: 'About' },
+  { id: 'story', label: 'Story' },
 ]
 
 /**
@@ -293,7 +293,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
           </a>
         ))}
 
-        <span data-intro className="hidden lg:inline-flex"><Saved count={saved} className="inline-flex" /></span>
+        <span data-intro className="hidden lg:inline-flex"><Saved count={saved} onOpen={() => onNav('saved')} className="inline-flex" /></span>
 
         <span data-intro className="mx-1 hidden h-7 w-px lg:block" style={{ background: 'rgb(var(--sr-ink) / 0.4)' }} />
 
@@ -331,7 +331,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         </span>
 
         {/* phone: search and a menu that holds everything else */}
-        <Saved count={saved} className="inline-flex px-1 lg:hidden" />
+        <Saved count={saved} onOpen={() => onNav('saved')} className="inline-flex px-1 lg:hidden" />
         <button
           onClick={onSearch}
           aria-label="Search"

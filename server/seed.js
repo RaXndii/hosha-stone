@@ -15,6 +15,20 @@ export const DEFAULT_SETTINGS = {
   instagram: 'hoshawestman',
 }
 
+/**
+ * The size guide starts empty on purpose.
+ *
+ * Measurements are the house's own: a wrong number here is a garment that
+ * does not fit and a return, so none are invented. Until the house fills
+ * these in (/admin → Settings → Size guide) the site says plainly that they
+ * have not been published and offers to answer on WhatsApp, which is true
+ * and useful; a made-up table would be neither.
+ *
+ * tables: [{ category: <slug | 'all'>, rows: [{ size, chest, length, shoulder, sleeve }] }]
+ * Measurements are of the garment laid flat, in the unit given.
+ */
+export const DEFAULT_SIZE_GUIDE = { unit: 'cm', note: '', tables: [] }
+
 // bundled assets are referenced from the site root once a server serves them
 const abs = (p) => (p ? p.replace(/^\.\//, '/') : p)
 const VIEW_OF = { 0: 'front', 45: 'three-quarter-right', 90: 'right', 135: 'three-quarter-back-right', 180: 'back', 225: 'three-quarter-back-left', 270: 'left', 315: 'three-quarter-left' }
@@ -23,6 +37,7 @@ const VIEW_OF = { 0: 'front', 45: 'three-quarter-right', 90: 'right', 135: 'thre
 export function seedIfEmpty() {
   if (getContent('about') === undefined) setContent('about', DEFAULT_ABOUT)
   if (getContent('settings') === undefined) setContent('settings', DEFAULT_SETTINGS)
+  if (getContent('sizeGuide') === undefined) setContent('sizeGuide', DEFAULT_SIZE_GUIDE)
   if (db.prepare('SELECT COUNT(*) n FROM categories').get().n > 0) return false
 
   tx(() => {

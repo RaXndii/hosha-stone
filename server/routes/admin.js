@@ -8,7 +8,7 @@ import {
 import { adminProduct, publicProduct } from '../catalogue.js'
 import { processImage, removeImageFiles, removeProductMedia, copyProductMedia, mediaUrl } from '../media.js'
 import { HttpError, clean, cleanLong, slugify, validateProduct, VIEWS, STATUSES, ORDER_STATUSES, SEASONS, BADGES, SIZE_SYSTEMS } from '../validate.js'
-import { DEFAULT_ABOUT, DEFAULT_SETTINGS } from '../seed.js'
+import { DEFAULT_ABOUT, DEFAULT_SETTINGS, DEFAULT_SIZE_GUIDE } from '../seed.js'
 
 export const adminRouter = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024, files: 12, fields: 40 } })
@@ -454,6 +454,46 @@ adminRouter.put('/settings', (req, res) => {
   setContent('settings', settings)
   logActivity(req.user.id, 'updated ordering settings')
   res.json(settings)
+})
+
+/* ---------------------------------------------------------------- size guide */
+
+/**
+ * The house's own measurements, of the garment laid flat. Everything is
+ * checked here: a measurement is a number in a believable range or it is left
+ * out, so an empty cell is shown as "—" rather than as a wrong number.
+ */
+const MEASURES = ['chest', 'length', 'shoulder', 'sleeve']
+
+const measurement = (v) => {
+  if (v === '' || v === null || v === undefined) return null
+  const n = Number(v)
+  if (!Number.isFinite(n) || n <= 0 || n > 300) return null
+  return Math.round(n * 10) / 10
+}
+
+adminRouter.get('/size-guide', (_req, res) => res.json(getContent('sizeGuide', DEFAULT_SIZE_GUIDE)))
+
+adminRouter.put('/size-guide', (req, res) => {
+  const b = req.body ?? {}
+  const slugs = new Set(db.prepare('SELECT slug FROM categories').all().map((c) => c.slug))
+  const tables = (Array.isArray(b.tables) ? b.tables : [])
+    .filter((t) => t && (t.category === 'all' || slugs.has(t.category)))
+    .slice(0, 20)
+    .map((t) => ({
+      category: t.category,
+      rows: (Array.isArray(t.rows) ? t.rows : [])
+        .slice(0, 16)
+        .map((r) => ({ size: clean(r?.size, 6), ...Object.fromEntries(MEASURES.map((m) => [m, measurement(r?.[m])])) }))
+        .filter((r) => r.size),
+    }))
+    // a table with no measurement in it at all says nothing; it is not kept
+    .filter((t) => t.rows.some((r) => MEASURES.some((m) => r[m] !== null)))
+
+  const guide = { unit: b.unit === 'in' ? 'in' : 'cm', note: cleanLong(b.note, 400), tables }
+  setContent('sizeGuide', guide)
+  logActivity(req.user.id, 'updated the size guide')
+  res.json(guide)
 })
 
 export { mediaUrl }

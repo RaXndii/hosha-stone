@@ -2,8 +2,9 @@ import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
 
 /**
- * One drawer serves the bag and the about panel — same entrance, same weight,
- * so opening either feels like the same system responding.
+ * One drawer, for anything that slides in beside the page — the size guide
+ * today. Same entrance, same weight, so opening any of them feels like the
+ * same system responding.
  */
 export default function Drawer({ open, onClose, title, children }) {
   const scrimRef = useRef(null)
@@ -42,7 +43,7 @@ export default function Drawer({ open, onClose, title, children }) {
       <div
         ref={scrimRef}
         onClick={onClose}
-        className="fixed inset-0 z-40 bg-abyss/70 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[52] bg-abyss/70 backdrop-blur-[2px]"
         style={{ opacity: 0, visibility: 'hidden' }}
       />
       <aside
@@ -50,7 +51,7 @@ export default function Drawer({ open, onClose, title, children }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[26rem] flex-col border-l border-bone/10 px-6 py-7 md:px-8"
+        className="fixed right-0 top-0 z-[54] flex h-full w-full max-w-[26rem] flex-col border-l border-bone/10 px-6 py-7 md:px-8"
         style={{ opacity: 0, visibility: 'hidden', background: 'var(--drawer-bg, rgba(9,7,24,0.96))' }}
       >
         <div className="flex items-center justify-between">
