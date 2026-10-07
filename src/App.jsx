@@ -4,6 +4,7 @@ import Browse from './components/browse/Browse.jsx'
 import { PageProvider, usePage } from './lib/page.jsx'
 import { ShopProvider } from './lib/shop.jsx'
 import { PREVIEW } from './lib/catalogue.js'
+import { frugal } from './lib/net.js'
 
 /**
  * Home is the showroom; the archive (Browsing) is the way into every other
@@ -22,6 +23,7 @@ function Pages() {
   const { route } = usePage()
 
   useEffect(() => {
+    if (frugal()) return
     const idle = window.requestIdleCallback ?? ((fn) => window.setTimeout(fn, 2500))
     const cancel = window.cancelIdleCallback ?? window.clearTimeout
     const id = idle(() => { warmStory().catch(() => {}) }, { timeout: 6000 })

@@ -215,9 +215,13 @@ function Card({ product, saved, onSave, onSelect }) {
           className="absolute inset-0 z-[3] focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[rgb(var(--sr-neon))]"
         />
 
-        <div data-card-info className="pointer-events-none relative z-[4] flex items-center justify-between px-4 pt-4 lg:px-5">
-          <span className="text-[9px] font-medium uppercase tracking-[0.3em] transition-[letter-spacing,color] duration-700 group-hover/card:tracking-[0.34em]" style={{ color: ink(0.5) }}>
+        <div data-card-info className="pointer-events-none relative z-[4] flex min-h-[44px] items-center justify-between pl-3 pr-1 pt-1 sm:min-h-0 sm:px-4 sm:pt-4 lg:px-5">
+          <span className="hidden text-[9px] font-medium uppercase tracking-[0.3em] transition-[letter-spacing,color] duration-700 group-hover/card:tracking-[0.34em] sm:inline" style={{ color: ink(0.5) }}>
             Hosha Stone / {product.number}
+          </span>
+          {/* a phone's grid is two pieces wide: the heart goes where a thumb looks for it */}
+          <span data-native-cursor className="pointer-events-auto relative z-[5] order-2 ml-auto sm:hidden">
+            <FavoriteButton active={saved} onToggle={onSave} name={product.name} />
           </span>
           {product.badge && (
             <span
@@ -281,9 +285,9 @@ function Card({ product, saved, onSave, onSelect }) {
           </span>
         </div>
 
-        <div data-card-info className="pointer-events-none relative z-[4] flex items-end justify-between gap-3 px-4 pb-4 pt-1 lg:px-5">
-          <div className="pointer-events-none min-w-0 opacity-[0.82] transition-opacity duration-700 group-hover/card:opacity-100">
-            <p className="truncate text-[10.5px] font-medium uppercase tracking-[0.2em] transition-[letter-spacing] duration-700 group-hover/card:tracking-[0.23em]" style={{ color: ink() }}>
+        <div data-card-info className="pointer-events-none relative z-[4] flex items-end justify-between gap-3 px-3 pb-3.5 pt-1 sm:px-4 sm:pb-4 lg:px-5">
+          <div className="pointer-events-none min-w-0 opacity-[0.88] transition-opacity duration-700 group-hover/card:opacity-100 sm:opacity-[0.82]">
+            <p className="truncate text-[10.5px] font-medium uppercase tracking-[0.12em] transition-[letter-spacing] duration-700 group-hover/card:tracking-[0.23em] sm:tracking-[0.2em]" style={{ color: ink() }}>
               {product.name}
             </p>
             <p className="mt-1.5 flex items-baseline gap-2 text-[11px] tracking-[0.08em]" style={{ color: ink(0.86) }}>
@@ -291,8 +295,8 @@ function Card({ product, saved, onSave, onSelect }) {
               {product.was ? <span className="text-[9.5px] line-through" style={{ color: ink(0.36) }}>${product.was}</span> : null}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="pointer-events-none hidden items-center gap-2 sm:flex" aria-label="Sizes">
+          <div className="hidden items-center gap-3 sm:flex">
+            <span className="pointer-events-none flex items-center gap-2" aria-label="Sizes">
               {product.sizes.map((s) => (
                 <span
                   key={s.label}
@@ -435,7 +439,9 @@ export default function Browse({ kept = false }) {
         gsap.to(batch, { opacity: 1, y: 0, duration: 1.15, ease: 'power3.out', stagger: 0.09, delay: 0.25 })
         batch = []
       }, 16)
-    }, { rootMargin: '0px 0px -6% 0px' })
+    // a row peeking over the bottom edge is shown, not held back: on a phone
+    // that sliver is the only sign there is more below
+    }, { rootMargin: '0px' })
     cards.forEach((c) => io.observe(c))
     return () => { io.disconnect(); window.clearTimeout(flushT) }
   }, [signature])
@@ -571,7 +577,7 @@ export default function Browse({ kept = false }) {
           ref={gridRef}
           key={signature}
           aria-label="Pieces"
-          className="card-zone relative mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:mt-12 lg:grid-cols-3 lg:gap-5 xl:grid-cols-4"
+          className="card-zone relative mt-8 grid grid-cols-2 gap-x-3 gap-y-4 sm:mt-10 sm:gap-4 lg:mt-12 lg:grid-cols-3 lg:gap-5 xl:grid-cols-4"
         >
           {list.map((p) => (
             <Card

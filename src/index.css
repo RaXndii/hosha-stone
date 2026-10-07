@@ -18,6 +18,12 @@
 
 html {
   background: #03020d;
+  /* a phone's grey tap flash would sit over the room like a stain; every
+     control here answers a press itself */
+  -webkit-tap-highlight-color: transparent;
+  /* type stays the size it was set, turned on its side too */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   scrollbar-width: none;
 }
 
@@ -27,6 +33,12 @@ html::-webkit-scrollbar {
 
 body {
   margin: 0;
+  /* the page is drawn edge to edge (viewport-fit=cover, for the room's light);
+     what is read and touched stays clear of a phone's notch when it is turned
+     on its side. The strip beside the notch shows this dark background, which
+     is what the notch itself looks like. Fixed panels clear it themselves. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   background: #03020d;
   color: #f4f2f7;
   font-family: 'Inter', system-ui, sans-serif;
@@ -449,5 +461,59 @@ button {
   .card-zone [data-card] [data-native-cursor],
   .card-zone [data-card] [data-native-cursor] * {
     cursor: pointer;
+  }
+}
+
+/* ------------------------------------------------------------------
+   The phone's buy bar (BuyBar.jsx). Glass on an ordinary phone: the room
+   scrolls under it, blurred. On a screen too short for that — a phone on its
+   side — the bar would sit over the piece's name and smear it, so there it is
+   a compact, solid strip, and the page fades into it instead.
+   ------------------------------------------------------------------ */
+.buy-bar {
+  position: relative;
+  padding: 10px max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: linear-gradient(to bottom, rgb(var(--sr-bg0) / 0.72), rgb(var(--sr-bg0) / 0.94));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 -1px 0 rgb(var(--sr-ink) / 0.1);
+}
+
+@media (max-height: 500px) {
+  .buy-bar {
+    padding-top: 6px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    background: rgb(var(--sr-bg0));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+  .buy-bar::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 100%;
+    height: 36px;
+    background: linear-gradient(to bottom, transparent, rgb(var(--sr-bg0)));
+    pointer-events: none;
+  }
+}
+
+/* ------------------------------------------------------------------
+   A floor for the smallest type, on anything narrower than a desk.
+   The house's labels are tiny tracked capitals — drawn for a large screen
+   read from a little way off. On a phone they are the same number of pixels
+   on a denser screen, and the smallest fell below what reads comfortably.
+   These lift only the smallest sizes, a step each, so the hierarchy between
+   them stays exactly as it was designed.
+   ------------------------------------------------------------------ */
+@media (max-width: 1023px) {
+  .text-\[8px\],
+  .text-\[8\.5px\] {
+    font-size: 9.5px;
+  }
+  .text-\[9px\],
+  .text-\[9\.5px\] {
+    font-size: 10px;
   }
 }

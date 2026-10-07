@@ -26,14 +26,34 @@ const getJson = async (url, ms = 6000) => {
   }
 }
 
+/**
+ * The catalogue the server wrote into the page itself, if it did. It is the
+ * same JSON /api/catalogue answers with, but it arrives with the HTML — so the
+ * site can draw the moment its script runs, instead of first asking the
+ * server a second time and waiting on the answer. On a phone that second
+ * round trip is a few hundred milliseconds before anything at all is shown.
+ */
+function inlined() {
+  const el = document.getElementById('hs-catalogue')
+  if (!el) return null
+  try { return JSON.parse(el.textContent) } catch { return null } finally { el.remove() }
+}
+
+function install(data) {
+  setCatalogue({ ...data, source: 'server' })
+  if (data.settings) setOrderSettings(data.settings)
+  if (data.sizeGuide) setSizeGuide(data.sizeGuide)
+}
+
 export async function loadCatalogue() {
-  try {
-    const data = await getJson('/api/catalogue')
-    setCatalogue({ ...data, source: 'server' })
-    if (data.settings) setOrderSettings(data.settings)
-    if (data.sizeGuide) setSizeGuide(data.sizeGuide)
-  } catch {
-    // no server: the bundled catalogue stays in place
+  const ready = inlined()
+  if (ready) install(ready)
+  else {
+    try {
+      install(await getJson('/api/catalogue'))
+    } catch {
+      // no server: the bundled catalogue stays in place
+    }
   }
 
   const m = window.location.hash.match(/^#\/preview\/(\d+)$/)

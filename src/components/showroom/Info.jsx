@@ -178,7 +178,7 @@ export function NextPiece({ next, onNext }) {
  */
 function Sizes({ sizes, selected, onSelect, nudge }) {
   return (
-    <div className="flex items-center gap-1 lg:gap-1.5" role="group" aria-label="Sizes">
+    <div className="flex flex-wrap items-center gap-1 lg:gap-1.5" role="group" aria-label="Sizes">
       {sizes.map(({ label, available }) => {
         const on = selected === label
         return (
@@ -190,7 +190,7 @@ function Sizes({ sizes, selected, onSelect, nudge }) {
             aria-label={available ? `Size ${label}` : `Size ${label}, sold out`}
             title={available ? undefined : 'Sold out'}
             onClick={() => available && onSelect(on ? null : label)}
-            className={`group grid h-[38px] min-w-[34px] place-items-center lg:min-w-[36px] ${available ? '' : 'cursor-not-allowed'}`}
+            className={`group grid h-11 min-w-11 place-items-center lg:h-[38px] lg:min-w-[36px] ${available ? '' : 'cursor-not-allowed'}`}
           >
             <span
               className={`relative grid h-[32px] min-w-[32px] place-items-center rounded-full px-1 text-[10.5px] font-medium tracking-[0.08em] transition-[transform,color,border-color,box-shadow,background] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
@@ -253,8 +253,10 @@ export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, o
   const caption = size ? 'Order now →' : state === 'ask' ? 'Select a size' : 'Choose a size'
   return (
     // one row on a phone and a wide screen; on a narrow desk the sizes sit
-    // above the price, so the group never reaches over the plinth
-    <div className="flex items-center gap-2.5 lg:flex-col-reverse lg:items-end lg:gap-3 xl:flex-row xl:items-center xl:gap-4">
+    // above the price, so the group never reaches over the plinth. On a phone
+    // too narrow for the row, the sizes take a line of their own rather than
+    // run off the edge of the screen, where they could not be reached
+    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-3 lg:flex-col-reverse lg:flex-nowrap lg:items-end lg:gap-3 xl:flex-row xl:items-center xl:gap-4">
       <div className="flex items-center gap-2.5 lg:gap-3">
       <FavoriteButton active={saved} onToggle={onSave} name={product.name} />
       <div className="flex flex-col items-center">
@@ -306,7 +308,7 @@ export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, o
           <button
             data-size
             onClick={onSizeGuide}
-            className="group/guide relative mt-2 py-1 text-[8.5px] font-medium uppercase tracking-[0.28em] transition-colors duration-500 hover:text-[rgb(var(--sr-ink))]"
+            className="group/guide relative mt-0.5 flex h-11 items-center text-[9.5px] font-medium uppercase tracking-[0.28em] transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] lg:mt-2 lg:h-auto lg:py-1 lg:text-[8.5px]"
             style={{ color: ink(0.42) }}
           >
             Size guide

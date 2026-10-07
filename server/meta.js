@@ -1,5 +1,5 @@
 import { db, getContent } from './db.js'
-import { publicProduct, publicSettings } from './catalogue.js'
+import { publicCatalogue, publicProduct, publicSettings } from './catalogue.js'
 import { DEFAULT_ABOUT } from './seed.js'
 
 /**
@@ -37,6 +37,18 @@ const about = () => ({ ...DEFAULT_ABOUT, ...getContent('about', {}) })
 
 const pieceRow = (slug) => db.prepare("SELECT * FROM products WHERE slug = ? AND status = 'published'").get(slug)
 
+/** The piece the showroom opens on at the front door — the first the house lists. */
+const firstPiece = () => {
+  const row = db
+    .prepare(
+      `SELECT p.* FROM products p LEFT JOIN categories c ON c.id = p.category_id
+       WHERE p.status = 'published' AND (c.id IS NULL OR (c.hidden = 0 AND c.archived = 0))
+       ORDER BY p.featured DESC, p.position ASC, p.id ASC LIMIT 1`,
+    )
+    .get()
+  return row ? publicProduct(row) : null
+}
+
 /** The piece, the archive, the story — or the house, when the path names none of them. */
 function describe(path, base) {
   const clean = path.replace(/\/+$/, '') || '/'
@@ -53,6 +65,8 @@ function describe(path, base) {
         image: `${base}/share/${p.id}.jpg`,
         url: `${base}/piece/${p.id}`,
         product: p,
+        hero: p.hero?.src,
+        colour: p.theme?.bg0,
       }
     }
   }
@@ -87,6 +101,8 @@ function describe(path, base) {
     description: trim(about().body || motto),
     image: `${base}/share/house.jpg`,
     url: `${base}/`,
+    hero: firstPiece()?.hero?.src,
+    colour: firstPiece()?.theme?.bg0,
   }
 }
 
@@ -140,6 +156,8 @@ export function metaFor(req) {
     tag('name', 'description', d.description),
     `<link rel="canonical" href="${esc(d.url)}" />`,
     d.private ? tag('name', 'robots', 'noindex, follow') : '',
+    // a phone's address bar takes the colour of the room the page opens in
+    tag('name', 'theme-color', Array.isArray(d.colour) ? `rgb(${d.colour.join(' ')})` : '#04030a'),
     tag('property', 'og:site_name', HOUSE),
     tag('property', 'og:type', d.product ? 'product' : 'website'),
     tag('property', 'og:title', d.title),
@@ -154,9 +172,21 @@ export function metaFor(req) {
     tag('name', 'twitter:description', d.description),
     tag('name', 'twitter:image', d.image),
     `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`,
+    // the one photograph this page opens on, asked for before any script runs:
+    // on a phone it is the thing the visitor is waiting to see
+    d.hero ? `<link rel="preload" as="image" href="${esc(d.hero)}" fetchpriority="high" />` : '',
   ]
     .filter(Boolean)
     .join('\n    ')
+}
+
+/**
+ * The catalogue, written into the page so the site can draw without asking
+ * for it again (src/lib/catalogue.js). JSON inside a script tag is inert; the
+ * one way out of it, a closing tag, is escaped.
+ */
+export function catalogueFor() {
+  return `<script id="hs-catalogue" type="application/json">${JSON.stringify(publicCatalogue()).replace(/</g, '\\u003c')}</script>`
 }
 
 /** Every page worth indexing, for /sitemap.xml. */

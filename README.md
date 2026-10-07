@@ -47,6 +47,36 @@ shared before this change still land where they meant to.
 static host, add a rewrite of everything to `/index.html`, or deep links
 404.
 
+## On a phone
+
+Most visitors arrive on a phone, from a link someone sent them, so the phone
+is designed for rather than shrunk to:
+
+- **A shared link opens on the piece.** The house's name card plays once a
+  visit, at the front door; a link to a piece goes straight to it, with the
+  room lit around it.
+- **Buying sits under the thumb.** A bar along the bottom carries the price,
+  the heart and *Choose a size*, and steps aside whenever the purchase on the
+  page is itself on screen. Sizes open in a sheet with buttons a finger can
+  hit; it pulls down to close.
+- **The piece follows the thumb.** Drag it sideways and it comes with you;
+  let go past the line, or flick it, and the next piece is brought in; let go
+  short and it swings back. The marks on the plinth's face show where you are
+  in the set, and can be tapped.
+- **Every control is at least 44 px**, the smallest labels are lifted a step
+  below desk width, and the archive is two pieces to a row.
+- **The browser's bar takes the room's colour**, piece by piece.
+- **Notches and home indicators are cleared** everywhere something meets the
+  edge of the screen, turned either way.
+
+What it costs a phone to arrive: on Lighthouse's mobile profile (slow 4G, a
+CPU four times slower than a desk) a shared link shows its piece in about
+2.6 s. Responses are compressed (Brotli or gzip), the two typefaces are served
+from the site itself, the page arrives with the catalogue already in it, the
+photograph it opens on is asked for before any script runs, and only the
+pieces a swipe can reach next are fetched ahead — none at all with Data Saver
+on.
+
 ## Share cards
 
 `server/share.js` draws the picture a shared link shows — 1200×630, the piece
@@ -71,6 +101,8 @@ The server also answers `/robots.txt` and `/sitemap.xml`, and writes
 | Share cards, once drawn | `storage/share/` |
 | Server and API | `server/` |
 | Tags a scraper reads; share cards | `server/meta.js`, `server/share.js` |
+| Typefaces (Inter, Playfair Display — SIL OFL, licences beside them) | `public/fonts/` |
+| Icons for the tab and a phone's home screen | `public/favicon.svg`, `public/*icon*.png` |
 | Admin app | `admin/index.html`, `src/admin/` |
 | Customer site | `index.html`, `src/` |
 

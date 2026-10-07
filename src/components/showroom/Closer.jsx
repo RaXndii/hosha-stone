@@ -185,12 +185,12 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
       {/* a liquid-glass floor line the piece turns above */}
       <div
         data-cl-back
-        className="pointer-events-none absolute left-1/2 top-[calc(100%_-_236px)] h-px w-[min(70vw,640px)] -translate-x-1/2 lg:top-[calc(100%_-_118px)]"
+        className="pointer-events-none absolute left-1/2 top-[calc(100%_-_236px_-_env(safe-area-inset-bottom))] h-px w-[min(70vw,640px)] -translate-x-1/2 lg:top-[calc(100%_-_118px_-_env(safe-area-inset-bottom))]"
         style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--sr-glass) / 0.22), rgb(var(--sr-neon) / 0.6), rgb(var(--sr-glass) / 0.22), transparent)' }}
       />
 
       {/* the piece */}
-      <div ref={frameRef} className="absolute inset-x-3 bottom-[232px] top-[118px] lg:inset-x-[15vw] lg:bottom-[122px] lg:top-[84px]">
+      <div ref={frameRef} className="absolute inset-x-3 bottom-[calc(232px+env(safe-area-inset-bottom))] top-[118px] lg:inset-x-[15vw] lg:bottom-[calc(122px+env(safe-area-inset-bottom))] lg:top-[84px]">
         {armed && front && (
           <div className="absolute inset-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ opacity: showing ? 0 : 1, transform: showing ? 'scale(0.96)' : 'none', pointerEvents: showing ? 'none' : 'auto' }}>
             <Turntable
@@ -225,7 +225,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
       </div>
 
       {/* top: what this is, and the way back */}
-      <div className="absolute inset-x-0 top-0 flex h-[64px] items-center justify-between px-5 lg:h-[84px] lg:px-12">
+      <div className="absolute inset-x-0 top-0 flex h-[64px] items-center justify-between pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] lg:h-[84px] lg:pl-[max(3rem,env(safe-area-inset-left))] lg:pr-[max(3rem,env(safe-area-inset-right))]">
         <div data-cl-chrome className="flex min-w-0 items-center gap-4">
           <span className="text-[9px] font-medium uppercase tracking-[0.38em]" style={{ color: 'rgb(var(--sr-neon))' }}>
             Look closer
@@ -291,7 +291,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
       )}
 
       {/* bottom: which way it faces, how to turn it, how close you are */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-[150px] flex justify-center lg:bottom-6">
+      <div className="pointer-events-none absolute inset-x-0 bottom-[calc(150px+env(safe-area-inset-bottom))] flex justify-center lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div data-cl-chrome className="flex flex-col items-center gap-2 transition-opacity duration-500" style={{ opacity: showing ? 0.25 : 1 }}>
           <div className="flex items-center gap-4">
             {canTurn && <Dial views={views} dialRef={dialRef} />}
@@ -313,7 +313,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
       </div>
 
       {/* zoom, for a hand without a wheel or a pinch */}
-      <div className="absolute bottom-8 left-12 hidden lg:block">
+      <div className="absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-[max(3rem,env(safe-area-inset-left))] hidden lg:block">
         <div data-cl-chrome className="flex items-center gap-1 rounded-full px-1.5 py-1 backdrop-blur-[3px]" style={{ border: `1px solid ${ink(0.14)}`, background: 'rgb(var(--sr-glass) / 0.035)' }}>
           {[['−', 1 / 1.35, 'Zoom out'], [null], ['+', 1.35, 'Zoom in']].map(([sym, f, label], i) =>
             sym ? (
@@ -336,7 +336,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
       </div>
 
       {/* the piece's price, sizes and favourite, within reach while it is examined */}
-      <div className="absolute inset-x-0 bottom-5 flex justify-center px-4 lg:inset-x-auto lg:bottom-7 lg:right-12 lg:px-0">
+      <div className="absolute inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] flex justify-center px-4 lg:inset-x-auto lg:bottom-[calc(1.75rem+env(safe-area-inset-bottom))] lg:right-[max(3rem,env(safe-area-inset-right))] lg:px-0">
         <div data-cl-chrome>{purchase}</div>
       </div>
     </div>

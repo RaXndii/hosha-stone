@@ -1,4 +1,5 @@
 import express from 'express'
+import compression from 'compression'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROOT, MEDIA_DIR } from './db.js'
@@ -7,7 +8,7 @@ import { cookies, issueSetupCode } from './auth.js'
 import { publicRouter } from './routes/public.js'
 import { adminRouter } from './routes/admin.js'
 import { shareRouter } from './routes/share.js'
-import { metaFor, origin, sitemap } from './meta.js'
+import { catalogueFor, metaFor, origin, sitemap } from './meta.js'
 import { HttpError } from './validate.js'
 
 /**
@@ -35,6 +36,11 @@ app.use((req, res, next) => {
   if (req.path.startsWith('/api/admin') || req.path.startsWith('/admin')) res.set('Cache-Control', 'no-store')
   next()
 })
+// text goes out compressed — Brotli where the browser takes it, gzip otherwise.
+// Unpacked, the site's script is three times the size; on a phone over a
+// cellular connection that difference is most of the wait. Photographs are
+// already compressed and are left alone.
+app.use(compression())
 app.use(express.json({ limit: '200kb' }))
 app.use(cookies)
 
@@ -66,6 +72,8 @@ app.get('/sitemap.xml', (req, res) => {
 
 if (existsSync(DIST)) {
   app.use('/assets', express.static(join(DIST, 'assets'), { immutable: true, maxAge: '365d' }))
+  // a font file is never changed under the same name (src/fonts.css)
+  app.use('/fonts', express.static(join(DIST, 'fonts'), { immutable: true, maxAge: '365d' }))
   app.use(express.static(DIST, { index: false, maxAge: '1h' }))
   app.get(/^\/admin(\/.*)?$/, (_req, res) => res.sendFile(join(DIST, 'admin', 'index.html')))
 
@@ -77,7 +85,7 @@ if (existsSync(DIST)) {
   app.get(/^\/(?!api\/|media\/|share\/).*/, (req, res) => {
     try {
       shell ??= readFileSync(SHELL, 'utf8')
-      res.type('html').send(shell.replace(META, metaFor(req)))
+      res.type('html').send(shell.replace(META, `${metaFor(req)}\n    ${catalogueFor()}`))
     } catch {
       res.sendFile(SHELL)
     }

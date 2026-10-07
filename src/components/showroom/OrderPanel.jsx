@@ -173,7 +173,7 @@ export default function OrderPanel({ open, product, size, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label="Order request"
-        className="absolute inset-x-0 bottom-0 max-h-[94svh] overflow-y-auto overscroll-contain px-6 pb-8 pt-6 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[min(470px,100vw)] md:px-10 md:pb-10 md:pt-9"
+        className="absolute inset-x-0 bottom-0 max-h-[94svh] overflow-y-auto overscroll-contain pb-[calc(2rem+env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-6 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[min(470px,100vw)] md:pb-[calc(2.5rem+env(safe-area-inset-bottom))] md:pl-10 md:pr-[max(2.5rem,env(safe-area-inset-right))] md:pt-9"
         style={{ background: 'linear-gradient(to bottom, rgb(var(--sr-bg1) / 0.98), rgb(var(--sr-bg0) / 0.99))', boxShadow: `-1px 0 0 ${ink(0.08)}, 0 -1px 0 ${ink(0.08)}` }}
       >
         <div className="flex items-center justify-between">

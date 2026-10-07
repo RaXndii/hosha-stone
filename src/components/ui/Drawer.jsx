@@ -51,7 +51,7 @@ export default function Drawer({ open, onClose, title, children }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed right-0 top-0 z-[54] flex h-full w-full max-w-[26rem] flex-col border-l border-bone/10 px-6 py-7 md:px-8"
+        className="fixed right-0 top-0 z-[54] flex h-full w-full max-w-[26rem] flex-col border-l border-bone/10 pb-[calc(1.75rem+env(safe-area-inset-bottom))] pl-6 pr-[max(1.5rem,env(safe-area-inset-right))] pt-7 md:pl-8 md:pr-[max(2rem,env(safe-area-inset-right))]"
         style={{ opacity: 0, visibility: 'hidden', background: 'var(--drawer-bg, rgba(9,7,24,0.96))' }}
       >
         <div className="flex items-center justify-between">

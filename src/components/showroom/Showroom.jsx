@@ -12,12 +12,28 @@ import Closer from './Closer.jsx'
 import { frameSrc, prefersLargeFrames } from './Turntable.jsx'
 import OrderPanel from './OrderPanel.jsx'
 import SizeGuide from './SizeGuide.jsx'
+import BuyBar, { SizeSheet } from './BuyBar.jsx'
 import { usePage } from '../../lib/page.jsx'
 import { pageHead, pieceHead } from '../../lib/head.js'
+import { frugal } from '../../lib/net.js'
 import { useShop } from '../../lib/shop.jsx'
 
 const LIGHT_ANCHOR = [0.5, 0.46]
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * Whether the house has already said its name to this visitor. The opening is
+ * the front door: it plays once a visit, on arriving at the home page. Someone
+ * who opens a link to a piece came for that piece — on a phone, from WhatsApp,
+ * usually — and is shown it straight away, with the room lit around it.
+ */
+const OPENED = 'hs-opened'
+const introduced = () => {
+  try { return window.sessionStorage.getItem(OPENED) === '1' } catch { return false }
+}
+const markIntroduced = () => {
+  try { window.sessionStorage.setItem(OPENED, '1') } catch { /* private mode: it plays again, harmlessly */ }
+}
 
 /** Resolve once the piece's image can be painted — never hold the set for long. */
 function ready(product) {
@@ -41,6 +57,8 @@ export default function Showroom({ initialId, entry }) {
   const { bag, saved, kept, toggleSaved } = useShop()
   const first = PRODUCTS.find((p) => p.id === initialId) ?? PRODUCTS[0]
   const arrival = useRef(entry)
+  // opened by a link to this piece, rather than at the front door
+  const direct = useRef(!!initialId)
   const rootRef = useRef(null)
   const stageRef = useRef(null)
   const cameraRef = useRef(null)
@@ -59,6 +77,12 @@ export default function Showroom({ initialId, entry }) {
   const [ordering, setOrdering] = useState(false)
   // what the piece measures — openable from the sizes, on stage or up close
   const [guide, setGuide] = useState(false)
+  // phone: the sizes at a size a finger can hit, from the bar along the bottom
+  const [sizeSheet, setSizeSheet] = useState(false)
+  const sheetFrom = useRef(null)
+  // the room is lit: until then the bar would sit over the house's entrance
+  const [lit, setLit] = useState(false)
+  const purchaseRef = useRef(null)
 
   // the room's colours are owned by GSAP after the first paint: these values
   // never change between renders, so React never writes over a tween
@@ -89,7 +113,7 @@ export default function Showroom({ initialId, entry }) {
   // the light, the ring and the piece's depth belong to the piece alone
   usePointerField(rootRef, { anchor: LIGHT_ANCHOR, zoneRef: stageRef })
   useSpotlight(rootRef)
-  useShowcase({ zoneRef: stageRef, cursorRef, parallaxRef, enabled: !closer && !overlay && !ordering && !guide })
+  useShowcase({ zoneRef: stageRef, cursorRef, parallaxRef, enabled: !closer && !overlay && !ordering && !guide && !sizeSheet })
 
   // the address and the name in the tab follow the piece on stage. At the
   // house's own address the house keeps its name: the showroom opens on a
@@ -98,7 +122,7 @@ export default function Showroom({ initialId, entry }) {
   useEffect(() => {
     if (firstPiece.current) {
       firstPiece.current = false
-      if (window.location.pathname === '/') { pageHead('home'); return }
+      if (window.location.pathname === '/') { pageHead('home', product.theme); return }
     } else {
       window.history.replaceState(null, '', `/piece/${productId}`)
     }
@@ -113,6 +137,7 @@ export default function Showroom({ initialId, entry }) {
       if (reducedMotion()) {
         gsap.set(root, { '--sr-dim': 0 })
         gsap.set(q('[data-opening]'), { autoAlpha: 0 })
+        setLit(true)
         return
       }
       if (arrival.current === 'browse') {
@@ -131,10 +156,13 @@ export default function Showroom({ initialId, entry }) {
         tl.fromTo(q('[data-size]'), { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.05 }, 0.75)
         tl.fromTo(q('[data-price-was]'), { opacity: 0, y: -4 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0.85)
         tl.fromTo(q('[data-price-now]'), { opacity: 0, y: 7 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 1.0)
+        tl.call(() => setLit(true), null, 0.9)
         return
       }
-      // coming back from the archive: the house has already introduced itself
-      const returning = arrival.current === 'return'
+      // the house has already introduced itself: coming back from another
+      // page, arriving by a link to a piece, or a second visit to the door
+      const returning = arrival.current === 'return' || direct.current || introduced()
+      markIntroduced()
       if (returning) gsap.set(q('[data-opening]'), { autoAlpha: 0 })
       // the arrival: the house's name in the dark, then the room
       const open = returning ? gsap.timeline({ paused: true }) : gsap.timeline()
@@ -153,11 +181,13 @@ export default function Showroom({ initialId, entry }) {
       tl.fromTo(q('[data-neon-glow]'), { opacity: 0 }, { opacity: 1, duration: 1.6, ease: 'power2.out' }, 0.6)
       tl.fromTo(q('[data-plinth]'), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.6, ease: 'expo.out' }, 0.2)
       tl.fromTo(q('[data-rock]'), { opacity: 0 }, { opacity: 1, duration: 1.4 }, 0.4)
+      // opened by a link to it, the piece is what the visitor is waiting for:
+      // it arrives with the first of the light rather than after it
       tl.fromTo(
         q('[data-hero]'),
         { opacity: 0, yPercent: -6, scale: 0.98, filter: 'blur(8px)' },
         { opacity: 1, yPercent: 0, scale: 1, filter: 'blur(0px)', duration: 1.8, ease: 'expo.out', clearProps: 'filter' },
-        0.75,
+        direct.current ? 0 : 0.75,
       )
       tl.fromTo(q('[data-intro]'), { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.8, stagger: 0.05 }, 0.6)
       tl.fromTo(q('[data-reveal-inner]'), { yPercent: 110 }, { yPercent: 0, duration: 1.0, ease: 'power3.out', stagger: 0.08 }, 1.1)
@@ -165,22 +195,29 @@ export default function Showroom({ initialId, entry }) {
       tl.fromTo(q('[data-size]'), { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out', stagger: 0.05 }, 1.45)
       tl.fromTo(q('[data-price-was]'), { opacity: 0, y: -4 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 1.6)
       tl.fromTo(q('[data-price-now]'), { opacity: 0, y: 7 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 1.78)
+      tl.call(() => setLit(true), null, 1.5)
     }, root)
     return () => ctx.revert()
   }, [])
 
-  // the other pieces' stage photographs, so moving on is instant. Only those:
-  // the turntable's frames wait until the visitor asks to look closer
+  // the pieces a swipe or an arrow reaches next, so moving on is instant —
+  // only those two, and again from wherever the visitor lands. Fetching the
+  // whole house up front costs a phone a quarter of a megabyte for pieces it
+  // may never be shown.
+  const warmed = useRef(new Set())
   useEffect(() => {
+    if (frugal()) return
     const t = window.setTimeout(() => {
-      PRODUCTS.forEach((p) => {
+      ;[next, prev].forEach((p) => {
+        if (!p || warmed.current.has(p.id)) return
+        warmed.current.add(p.id)
         const i = new Image()
         i.decoding = 'async'
         i.src = p.hero.src
       })
-    }, 1500)
+    }, 1200)
     return () => window.clearTimeout(t)
-  }, [])
+  }, [next, prev])
 
   // a hand on its way to "Look closer" starts the frames on their way, once per piece
   const fetched = useRef(new Set())
@@ -262,6 +299,9 @@ export default function Showroom({ initialId, entry }) {
     const pending = pendingIn.current
     if (!pending) return
     pendingIn.current = null
+    // a piece thrown off by a swipe is put back in the dark, ready for the next
+    gsap.killTweensOf(parallaxRef.current)
+    gsap.set(parallaxRef.current, { clearProps: 'transform,opacity' })
     const root = rootRef.current
     const q = gsap.utils.selector(root)
     const { d } = pending
@@ -313,22 +353,72 @@ export default function Showroom({ initialId, entry }) {
 
   /* ------------------------------------------------------- stage input */
   // a still press on the piece looks closer; a sideways swipe moves on
+  //
+  // On a touch screen the piece comes with the thumb: it follows the drag a
+  // little behind the finger, sways on its hanger, and dims as it is pulled
+  // away. Let go past the line, or flick it, and it is carried on the way it
+  // was thrown while the room changes; let go short of it and it swings back.
+  // Only a sideways drag is taken — an upward one is the page scrolling, and
+  // the browser keeps it (touch-pan-y).
   const press = useRef(null)
-  const onStageDown = (e) => { press.current = { x: e.clientX, y: e.clientY } }
+  const onStageDown = (e) => {
+    const now = performance.now()
+    press.current = { x: e.clientX, y: e.clientY, touch: e.pointerType !== 'mouse', following: false, trail: [{ x: e.clientX, t: now }] }
+  }
+  const onStageMove = (e) => {
+    const p = press.current
+    if (!p || !p.touch || busy.current || reducedMotion()) return
+    const dx = e.clientX - p.x
+    const dy = e.clientY - p.y
+    if (!p.following) {
+      // a few pixels decide whether this is a swipe at all
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.2) return
+      p.following = true
+      gsap.killTweensOf(parallaxRef.current)
+    }
+    p.trail.push({ x: e.clientX, t: performance.now() })
+    if (p.trail.length > 8) p.trail.shift()
+    const w = stageRef.current.offsetWidth || 1
+    gsap.set(parallaxRef.current, { x: dx * 0.9, rotation: dx * 0.012, opacity: 1 - Math.min(0.55, (Math.abs(dx) / w) * 0.6) })
+  }
+  const swingBack = () =>
+    gsap.to(parallaxRef.current, { x: 0, rotation: 0, opacity: 1, duration: 0.75, ease: 'elastic.out(1, 0.8)', clearProps: 'transform,opacity' })
   const onStageUp = (e) => {
     const p = press.current
     press.current = null
     if (!p) return
     const dx = e.clientX - p.x
     const dy = e.clientY - p.y
-    if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4) { stepProduct(dx < 0 ? 1 : -1); return }
+    // how fast the thumb was going as it let go: measured over its last tenth
+    // of a second, the way a phone's own scrolling measures a flick
+    const end = performance.now()
+    const recent = p.trail.filter((pt) => end - pt.t < 100)
+    const from = recent[0] ?? p.trail[p.trail.length - 1]
+    const v = from ? (e.clientX - from.x) / Math.max(16, end - from.t) : 0
+    const flick = Math.abs(v) > 0.35 && Math.abs(dx) > 20 && Math.sign(v) === Math.sign(dx)
+    if (n > 1 && (Math.abs(dx) > 56 || flick) && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      const d = dx < 0 ? 1 : -1
+      if (p.following) {
+        // thrown, it keeps going; the next piece's entrance puts this back
+        gsap.to(parallaxRef.current, { x: -d * stageRef.current.offsetWidth * 0.55, rotation: -d * 4, opacity: 0, duration: 0.45, ease: 'power2.out' })
+      }
+      stepProduct(d)
+      return
+    }
+    if (p.following) { swingBack(); return }
     if (Math.hypot(dx, dy) < 8) openCloser()
+  }
+  // the browser took the gesture (the page scrolled): whatever was dragged goes home
+  const onStageCancel = () => {
+    const p = press.current
+    press.current = null
+    if (p?.following) swingBack()
   }
 
   /* ------------------------------------------------------- keyboard */
   useEffect(() => {
     const onKey = (e) => {
-      if (overlay || closer || ordering || guide) return
+      if (overlay || closer || ordering || guide || sizeSheet) return
       if (e.target instanceof HTMLInputElement) return
       if (e.key === '/') { e.preventDefault(); setOverlay('search') }
       else if (e.key === 'ArrowRight') stepProduct(1)
@@ -336,7 +426,7 @@ export default function Showroom({ initialId, entry }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [overlay, closer, ordering, guide, stepProduct])
+  }, [overlay, closer, ordering, guide, sizeSheet, stepProduct])
 
   const goHome = () => {
     setOverlay(null)
@@ -399,7 +489,9 @@ export default function Showroom({ initialId, entry }) {
         id="main"
         tabIndex={-1}
         onPointerDown={onStageDown}
+        onPointerMove={onStageMove}
         onPointerUp={onStageUp}
+        onPointerCancel={onStageCancel}
         className="showcase-zone absolute left-1/2 top-[12.5svh] z-10 h-[41svh] w-[min(88vw,46svh)] -translate-x-1/2 touch-pan-y lg:top-[18.5%] lg:h-[56%] lg:w-[min(36vw,62vh)] xl:w-[min(42vw,66vh)]"
       >
         <div ref={cameraRef} className="relative h-full w-full will-change-transform" style={{ transformOrigin: '50% 60%' }}>
@@ -410,7 +502,7 @@ export default function Showroom({ initialId, entry }) {
                 src={product.hero.src}
                 alt={`${product.name} — front`}
                 draggable="false"
-                decoding="async"
+                fetchPriority="high"
                 className="h-full w-full select-none object-contain object-bottom"
               />
             </div>
@@ -421,6 +513,40 @@ export default function Showroom({ initialId, entry }) {
       <SceneFront />
       <HouseLights />
 
+      {/* phone: where you are in the set, set into the plinth's stone face and
+          lit in the piece's neon — and the sign that it swipes to the next.
+          It sits above the house lights, so while the room is dark between
+          two pieces the mark is seen moving to the one coming in */}
+      {n > 1 && (
+        <nav
+          aria-label="Pieces"
+          data-fade
+          className="absolute inset-x-0 top-[58.6svh] z-[14] flex h-[4.4svh] items-center justify-center lg:hidden"
+        >
+          {list.map((p, i) => {
+            const on = i === pos
+            return (
+              <button
+                key={p.id}
+                onClick={() => { if (!on) requestProduct(p.id, i > pos ? 1 : -1) }}
+                aria-label={p.name}
+                aria-current={on || undefined}
+                className="grid h-11 w-11 place-items-center"
+              >
+                <span
+                  className="block h-px transition-[width,background-color,box-shadow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                  style={{
+                    width: on ? 22 : 10,
+                    background: on ? 'rgb(var(--sr-neon))' : 'rgb(var(--sr-ink) / 0.3)',
+                    boxShadow: on ? '0 0 8px rgb(var(--sr-neon) / 0.9)' : 'none',
+                  }}
+                />
+              </button>
+            )
+          })}
+        </nav>
+      )}
+
       {/* phone: the stage takes the first screen; the words follow below */}
       <div aria-hidden="true" className="h-[calc(65svh_-_72px)] shrink-0 lg:hidden" />
 
@@ -430,15 +556,15 @@ export default function Showroom({ initialId, entry }) {
       </div>
 
       {/* right: the next piece */}
-      <div data-fade-group className="relative z-20 order-4 px-6 pb-14 pt-10 lg:absolute lg:right-[max(3rem,4vw)] lg:top-[40%] lg:p-0">
+      <div data-fade-group className="relative z-20 order-4 px-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-10 lg:absolute lg:right-[max(3rem,4vw)] lg:top-[40%] lg:p-0">
         <NextPiece next={next} onNext={() => stepProduct(1)} />
       </div>
 
       {/* bottom: where you are in the set, and the price and sizes */}
-      <div data-fade-group className="relative z-20 order-3 px-6 pt-10 lg:absolute lg:bottom-[9.5%] lg:left-[max(3rem,3.7vw)] lg:p-0">
+      <div data-fade-group className="relative z-20 order-3 hidden px-6 pt-10 lg:absolute lg:bottom-[9.5%] lg:left-[max(3rem,3.7vw)] lg:block lg:p-0">
         <Pager pos={pos} total={n} dir={dir} />
       </div>
-      <div data-fade-group className="relative z-20 order-2 px-6 pt-9 lg:absolute lg:bottom-[8.5%] lg:right-[max(3rem,4vw)] lg:p-0">
+      <div ref={purchaseRef} data-fade-group className="relative z-20 order-2 px-6 pt-9 lg:absolute lg:bottom-[8.5%] lg:right-[max(3rem,4vw)] lg:p-0">
         <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
       </div>
 
@@ -484,6 +610,30 @@ export default function Showroom({ initialId, entry }) {
 
       <OrderPanel open={ordering} product={product} size={size} onClose={() => setOrdering(false)} />
       <SizeGuide open={guide} product={product} onClose={() => setGuide(false)} />
+
+      {/* phone: buying along the bottom edge, where a thumb rests */}
+      <BuyBar
+        product={product}
+        size={size}
+        dir={dir}
+        saved={saved.includes(product.id)}
+        onSave={(on) => toggleSaved(product.id, on)}
+        onChoose={(ref) => { sheetFrom.current = ref.current; setSizeSheet(true) }}
+        onOrder={() => setOrdering(true)}
+        watchRef={purchaseRef}
+        lit={lit}
+        hidden={closer || ordering || guide || sizeSheet || !!overlay}
+      />
+      <SizeSheet
+        open={sizeSheet}
+        product={product}
+        size={size}
+        onSize={setSize}
+        onClose={() => setSizeSheet(false)}
+        onOrder={() => { setSizeSheet(false); setOrdering(true) }}
+        onSizeGuide={() => { setSizeSheet(false); setGuide(true) }}
+        returnFocusRef={sheetFrom}
+      />
     </div>
   )
 }

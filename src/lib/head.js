@@ -37,6 +37,14 @@ const trim = (s, max = 180) => {
   return t.length <= max ? t : `${t.slice(0, max - 1).replace(/[\s,;:.—-]+\S*$/, '')}…`
 }
 
+/**
+ * On a phone the address bar and the status bar take this colour. Each room
+ * has its own, so the browser's chrome is the room's deepest edge rather than
+ * one fixed colour laid across every piece.
+ */
+export const roomColour = (rgb) => meta('theme-color', 'name', `rgb(${rgb.join(' ')})`)
+const ARCHIVE_EDGE = [4, 3, 8]
+
 export function setHead({ title, description, path = window.location.pathname, image }) {
   const url = window.location.origin + path
   document.title = title
@@ -57,13 +65,15 @@ export function setHead({ title, description, path = window.location.pathname, i
   }).setAttribute('href', url)
 }
 
-export const pieceHead = (product) =>
+export const pieceHead = (product) => {
   setHead({
     title: `${product.name} — ${HOUSE}`,
     description: trim(product.description || product.tagline || ABOUT.motto),
     path: `/piece/${product.id}`,
     image: `/share/${product.id}.jpg`,
   })
+  if (product.theme?.bg0) roomColour(product.theme.bg0)
+}
 
 const PAGES = {
   home: { title: `${HOUSE} — ${ABOUT.motto}`, description: () => trim(ABOUT.body), path: '/' },
@@ -72,7 +82,8 @@ const PAGES = {
   story: { title: `Story — ${HOUSE}`, description: () => trim(ABOUT.body), path: '/story' },
 }
 
-export const pageHead = (name) => {
+export const pageHead = (name, theme) => {
   const p = PAGES[name] ?? PAGES.home
   setHead({ title: p.title, description: p.description(), path: p.path, image: '/share/house.jpg' })
+  roomColour(theme?.bg0 ?? ARCHIVE_EDGE)
 }

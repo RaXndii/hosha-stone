@@ -25,7 +25,7 @@ function Saved({ count, className = '', onOpen }) {
       onClick={onOpen}
       aria-label={count ? `Kept — ${count} ${count === 1 ? 'piece' : 'pieces'}` : 'Kept — nothing yet'}
       title={count ? `${count} kept` : 'Kept'}
-      className={`items-center gap-1.5 text-[10px] font-medium tabular-nums tracking-[0.1em] transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] ${className}`}
+      className={`h-11 min-w-11 items-center justify-center gap-1.5 text-[10px] font-medium tabular-nums tracking-[0.1em] transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] lg:h-auto lg:min-w-0 ${className}`}
       style={{ color: count ? 'rgb(var(--sr-ink) / 0.9)' : 'rgb(var(--sr-ink) / 0.45)' }}
     >
       <span ref={ref} className="block">
@@ -223,7 +223,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         data-intro
         onClick={onHome}
         aria-label="Hosha Stone — home"
-        className="group relative whitespace-nowrap font-display text-[17px] tracking-[0.3em] lg:text-[21px]"
+        className="group relative whitespace-nowrap py-3 font-display text-[17px] tracking-[0.3em] max-[359px]:text-[15px] max-[359px]:tracking-[0.22em] lg:py-0 lg:text-[21px]"
         style={{ color: 'rgb(var(--sr-ink))' }}
       >
         HOSHA STONE
@@ -270,7 +270,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         })}
       </nav>
 
-      <div className="relative flex items-center gap-2 lg:gap-4">
+      <div className="relative flex items-center gap-0.5 lg:gap-4">
         {[
           { label: 'Instagram', Icon: Instagram, href: `https://instagram.com/${INSTAGRAM}` },
           { label: 'WhatsApp', Icon: WhatsApp, href: `https://wa.me/${WHATSAPP}` },
@@ -335,7 +335,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         <button
           onClick={onSearch}
           aria-label="Search"
-          className="grid h-10 w-10 place-items-center lg:hidden"
+          className="grid h-11 w-11 place-items-center lg:hidden"
           style={{ color: 'rgb(var(--sr-ink) / 0.85)' }}
         >
           <Glass className="h-[18px] w-[18px]" />
@@ -343,7 +343,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         <button
           onClick={onMenu}
           aria-label="Menu"
-          className="grid h-10 w-10 place-items-center lg:hidden"
+          className="-mr-2 grid h-11 w-11 place-items-center lg:hidden"
           style={{ color: 'rgb(var(--sr-ink) / 0.85)' }}
         >
           <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none">

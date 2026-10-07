@@ -141,7 +141,7 @@ export default function FavoriteButton({ active, onToggle, name }) {
       aria-pressed={active}
       aria-label={active ? `Saved — remove the ${name} from favourites` : `Save the ${name} to favourites`}
       title={active ? 'Saved' : 'Save'}
-      className="group relative grid h-10 w-10 shrink-0 place-items-center lg:h-11 lg:w-11"
+      className="group relative grid h-11 w-11 shrink-0 place-items-center"
       style={{ color: 'rgb(var(--sr-ink) / 0.7)' }}
     >
       {/* a soft glow, only when the hand is near or the heart is lit */}

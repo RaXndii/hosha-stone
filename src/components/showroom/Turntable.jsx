@@ -75,12 +75,17 @@ void take(sampler2D tex, float ang, float on, float flip, float pres, float phi,
   float q = wrapPI(phi + psiAt(ang));
   float facing = cos(q);
   presSum += pres;
+  // sampled before anything is decided per pixel. A texture read inside a
+  // branch some pixels skip leaves the GPU without the neighbours it needs to
+  // choose a mip level, so along the cloth's edges it fell to the smallest —
+  // the whole photograph averaged to one colour — and drew it as a thin line
+  // across the turntable. Read everywhere, then decide whether it counts.
+  float u = clamp(0.5 + 0.5 * sin(q), 0.0, 1.0);
+  u = mix(u, 1.0 - u, step(0.5, flip));
+  vec4 c = texture2D(tex, vec2(u, v));
   if (facing <= 0.0) return;
   float d = wrapPI(uTheta - ang);
   float close = exp(-(d * d - uDmin * uDmin) / (uSigma * uSigma));
-  float u = clamp(0.5 + 0.5 * sin(q), 0.0, 1.0);
-  if (flip > 0.5) u = 1.0 - u;
-  vec4 c = texture2D(tex, vec2(u, v));
   // the photograph's empty background is exactly empty — no faint box around the piece
   c.a = smoothstep(0.03, 0.08, c.a);
   vec4 pm = vec4(c.rgb * c.a, c.a);
@@ -96,12 +101,14 @@ void main() {
   vec2 px = vec2(vUv.x * uRes.x, (1.0 - vUv.y) * uRes.y);
   vec2 g = (px - uCenter) / (uFit * uZoom) + uPan;
   float v = g.y + 0.5;
-  if (v < 0.0 || v > 1.0) { gl_FragColor = vec4(0.0); return; }
   float c = cos(uTheta);
   float s = sin(uTheta);
   float R = sqrt(uW * uW * c * c + uD * uD * s * s);
   float xr = g.x / R;
-  if (abs(xr) >= 1.0) { gl_FragColor = vec4(0.0); return; }
+  // outside the cloth is drawn as nothing — but by a mask at the end, not an
+  // early return, so the photographs are read in step across the whole quad
+  float inside = step(0.0, v) * step(v, 1.0) * step(abs(xr), 0.99999);
+  xr = clamp(xr, -0.99999, 0.99999);
   float psi = atan(uD * s, uW * c);
   float phi = asin(xr) - psi;
 
@@ -132,7 +139,7 @@ void main() {
   float lam = sqrt(max(0.0, 1.0 - xr * xr));
   float sheen = pow(max(0.0, cos(phi + psi + 0.6)), 12.0) * uSheen;
   col.rgb = col.rgb * (0.88 + 0.12 * lam) + vec3(sheen) * col.a;
-  gl_FragColor = col;
+  gl_FragColor = col * inside;
 }
 `
 

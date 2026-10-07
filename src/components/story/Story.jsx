@@ -174,7 +174,7 @@ export default function Story() {
   useSpotlight(rootRef)
   useEffect(() => { pageHead('story') }, [])
 
-  const enter = useCallback((id) => go('piece', { id, entry: 'browse' }), [go])
+  const enter = useCallback((id) => go('piece', { id, entry: 'return' }), [go])
 
   const onNav = (id) => {
     if (id === 'collections') { setOverlay(id === overlay ? null : id); return }

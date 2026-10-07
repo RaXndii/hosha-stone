@@ -76,6 +76,11 @@ export function SearchSheet({ open, onClose, onPick, onCategory }) {
     setHi(0)
   })
   useEscape(open, onClose)
+  // nothing inside is drawn until it is first asked for: the field is set in
+  // the italic, and laying it out — even hidden — would fetch that face on
+  // every page load for a search most visits never open
+  const [asked, setAsked] = useState(false)
+  if (open && !asked) setAsked(true)
 
   useEffect(() => {
     if (!open) return
@@ -104,10 +109,10 @@ export function SearchSheet({ open, onClose, onPick, onCategory }) {
         ref={sheetRef}
         role="dialog"
         aria-label="Search"
-        className="absolute inset-x-0 top-0 px-5 pb-10 pt-6 md:px-12 md:pt-8"
+        className="absolute inset-x-0 top-0 pb-10 pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))] pt-6 md:pl-[calc(3rem+env(safe-area-inset-left))] md:pr-[calc(3rem+env(safe-area-inset-right))] md:pt-8"
         style={{ background: 'linear-gradient(to bottom, rgb(var(--sr-bg0) / 0.98), rgb(var(--sr-bg1) / 0.96))', borderBottom: '1px solid rgb(var(--sr-ink) / 0.1)' }}
       >
-        <div className="mx-auto max-w-4xl">
+        {asked && <div className="mx-auto max-w-4xl">
           <div className="flex items-center justify-between">
             <span className="text-[9.5px] uppercase tracking-[0.34em]" style={{ color: 'rgb(var(--sr-ink) / 0.5)' }}>Search the house</span>
             <button onClick={onClose} aria-label="Close search" className="text-[10px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.6)' }}>
@@ -170,7 +175,7 @@ export function SearchSheet({ open, onClose, onPick, onCategory }) {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   )
@@ -186,14 +191,19 @@ export function MobileMenu({ open, onClose, onNav, category, onCategory }) {
   return (
     <div className={`fixed inset-0 z-50 lg:hidden ${open ? '' : 'pointer-events-none'}`} aria-hidden={!open}>
       <div ref={scrimRef} onClick={onClose} className="absolute inset-0" style={{ background: 'rgb(var(--sr-bg0) / 0.7)' }} />
-      <div ref={sheetRef} className="absolute inset-0 flex flex-col px-6 pb-10 pt-6" style={{ background: 'rgb(var(--sr-bg0) / 0.97)' }}>
-        <div className="flex items-center justify-between">
+      <div
+        ref={sheetRef}
+        className="absolute inset-0 flex flex-col overflow-y-auto pb-[calc(2.5rem+env(safe-area-inset-bottom))] pl-[calc(1.25rem+env(safe-area-inset-left))] pr-[calc(1.25rem+env(safe-area-inset-right))]"
+        style={{ background: 'rgb(var(--sr-bg0) / 0.97)' }}
+      >
+        {/* drawn exactly over the page's header, so opening the menu moves nothing */}
+        <div className="flex h-[72px] shrink-0 items-center justify-between">
           <span className="font-display text-[17px] tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink))' }}>HOSHA STONE</span>
-          <button onClick={onClose} aria-label="Close menu" className="grid h-10 w-10 place-items-center" style={{ color: 'rgb(var(--sr-ink))' }}>
+          <button onClick={onClose} aria-label="Close menu" className="-mr-2 grid h-11 w-11 place-items-center" style={{ color: 'rgb(var(--sr-ink))' }}>
             <svg viewBox="0 0 16 16" className="h-4 w-4"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
           </button>
         </div>
-        <nav className="mt-14 flex flex-col gap-7">
+        <nav className="mt-10 flex flex-col gap-7">
           {['browse', 'collections', 'story', 'saved'].map((id) => (
             <div key={id}>
               <button
@@ -235,9 +245,9 @@ export function MobileMenu({ open, onClose, onNav, category, onCategory }) {
             </div>
           ))}
         </nav>
-        <div className="mt-auto flex gap-6 text-[10px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.6)' }}>
-          <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer">WhatsApp</a>
-          <a href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram</a>
+        <div className="mt-auto flex gap-8 pt-10 text-[11px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.65)' }}>
+          <a className="flex h-11 items-center" href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer">WhatsApp</a>
+          <a className="flex h-11 items-center" href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram</a>
         </div>
       </div>
     </div>
