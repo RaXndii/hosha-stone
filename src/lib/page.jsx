@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { PRODUCTS } from '../data/showroom.js'
+import { sound } from './sound/index.js'
 
 /**
  * Five places, no router library:
@@ -82,6 +83,7 @@ export function PageProvider({ children }) {
       return
     }
     busy.current = true
+    sound.play('curtain')
     gsap.to(curtain, {
       autoAlpha: 1,
       duration: 0.5,

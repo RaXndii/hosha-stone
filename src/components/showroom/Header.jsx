@@ -3,6 +3,8 @@ import gsap from 'gsap'
 import { CATEGORIES, countIn, pad2 } from '../../data/showroom.js'
 import { INSTAGRAM, WHATSAPP } from '../../data/order.js'
 import { PixelHeart } from './PixelHeart.jsx'
+import { useSound } from '../../lib/sound/index.js'
+import Plate from '../ui/Plate.jsx'
 
 /**
  * The favourites count: a small pixel heart that lights and pops when a piece
@@ -32,6 +34,37 @@ function Saved({ count, className = '', onOpen }) {
         <PixelHeart filled={count > 0} className="h-[11px] w-[12px]" />
       </span>
       <span className="min-w-[1ch]">{count || ''}</span>
+    </button>
+  )
+}
+
+/**
+ * The sound switch: four thin bars. They move while sound is playing, stand
+ * still at half height when it is on but has not started (it starts at the
+ * first touch), and lie flat when it is off.
+ */
+export function SoundToggle({ className = '', label = false }) {
+  const { on, playing, toggle } = useSound()
+  return (
+    <button
+      data-sound="none"
+      onClick={toggle}
+      aria-pressed={on}
+      aria-label={on ? 'Sound on — turn it off' : 'Sound off — turn it on'}
+      title={on ? 'Sound on' : 'Sound off'}
+      className={`group items-center justify-center gap-3 transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] ${className}`}
+      style={{ color: on ? 'rgb(var(--sr-ink) / 0.85)' : 'rgb(var(--sr-ink) / 0.42)' }}
+    >
+      <span aria-hidden="true" className="flex h-[14px] items-end gap-[2.5px]">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={`sound-bar block h-full w-[2px] ${playing ? 'is-playing' : ''}`}
+            style={{ '--i': i, background: 'currentColor', transform: `scaleY(${on ? [0.45, 0.8, 0.6, 0.35][i] : 0.14})` }}
+          />
+        ))}
+      </span>
+      {label && <span className="text-[11px] uppercase tracking-[0.3em]">{on ? 'Sound on' : 'Sound off'}</span>}
     </button>
   )
 }
@@ -223,7 +256,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         data-intro
         onClick={onHome}
         aria-label="Hosha Stone — home"
-        className="group relative whitespace-nowrap py-3 font-display text-[17px] tracking-[0.3em] max-[359px]:text-[15px] max-[359px]:tracking-[0.22em] lg:py-0 lg:text-[21px]"
+        className="group relative whitespace-nowrap py-3 font-display text-[17px] tracking-[0.3em] max-[389px]:text-[15px] max-[389px]:tracking-[0.22em] lg:py-0 lg:text-[21px]"
         style={{ color: 'rgb(var(--sr-ink))' }}
       >
         HOSHA STONE
@@ -284,9 +317,10 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
             rel="noreferrer"
             aria-label={label}
             title={label}
-            className="vx group hidden h-10 w-10 place-items-center rounded-full border border-transparent transition-colors duration-300 hover:border-[rgb(var(--sr-ink)/0.22)] lg:grid"
+            className="vx group hidden h-10 w-10 place-items-center transition-colors duration-300 lg:grid"
             style={{ color: 'rgb(var(--sr-ink) / 0.78)' }}
           >
+            <Plate cut={11} edge="rgb(var(--sr-ink) / 0)" edgeHi="rgb(var(--sr-ink) / 0.3)" />
             <span className="transition-[filter] duration-300 group-hover:brightness-150">
               <Icon />
             </span>
@@ -294,6 +328,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         ))}
 
         <span data-intro className="hidden lg:inline-flex"><Saved count={saved} onOpen={() => onNav('saved')} className="inline-flex" /></span>
+        <span data-intro className="hidden lg:inline-flex"><SoundToggle className="flex h-10 w-10" /></span>
 
         <span data-intro className="mx-1 hidden h-7 w-px lg:block" style={{ background: 'rgb(var(--sr-ink) / 0.4)' }} />
 
@@ -301,6 +336,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         <button
           data-intro
           data-vx
+          data-sound="none"
           onClick={onSearch}
           aria-label="Search"
           className="vx group relative hidden h-10 w-[104px] items-center justify-between rounded-sm px-1 lg:flex xl:w-[150px]"
@@ -318,7 +354,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         {/* the bag count sits in the margin, so its arrival moves nothing else */}
         <span
           aria-hidden={bag === 0}
-          className="absolute -right-8 top-1/2 hidden h-5 min-w-5 place-items-center rounded-full px-1 text-[9.5px] font-semibold transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] lg:grid"
+          className="facet absolute -right-8 top-1/2 hidden h-5 min-w-5 place-items-center px-1 text-[9.5px] font-semibold transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] [--cut:5px] lg:grid"
           style={{
             background: 'rgb(var(--sr-accent))',
             color: 'rgb(var(--sr-bg0))',
@@ -332,7 +368,9 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
 
         {/* phone: search and a menu that holds everything else */}
         <Saved count={saved} onOpen={() => onNav('saved')} className="inline-flex px-1 lg:hidden" />
+        <SoundToggle className="flex h-11 w-11 max-[359px]:hidden lg:hidden" />
         <button
+          data-sound="none"
           onClick={onSearch}
           aria-label="Search"
           className="grid h-11 w-11 place-items-center lg:hidden"
@@ -341,6 +379,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
           <Glass className="h-[18px] w-[18px]" />
         </button>
         <button
+          data-sound="none"
           onClick={onMenu}
           aria-label="Menu"
           className="-mr-2 grid h-11 w-11 place-items-center lg:hidden"

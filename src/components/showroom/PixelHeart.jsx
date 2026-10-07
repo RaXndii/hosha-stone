@@ -1,5 +1,7 @@
 import { useRef } from 'react'
 import gsap from 'gsap'
+import { KEPT_SHOWN_FROM } from '../../lib/shop.jsx'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * A heart drawn on a 9 × 8 grid, the way a game would draw one: an outline, a
@@ -78,7 +80,12 @@ const snap = (v) => `${Math.round(parseFloat(v) / 2) * 2}px`
  * touched from here. Saving pops the heart — compress, burst, settle — and
  * throws a handful of pixels and tiny hearts that are gone in half a second.
  */
-export default function FavoriteButton({ active, onToggle, name }) {
+/** 1,240 → 1.2k: the count stays a glance, not a figure to read. */
+const compact = (n) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n))
+
+export default function FavoriteButton({ active, onToggle, name, count = 0 }) {
+  // how many people kept it, once that says something
+  const shown = count >= KEPT_SHOWN_FROM
   const iconRef = useRef(null)
   const burstRef = useRef(null)
   const flashRef = useRef(null)
@@ -129,6 +136,7 @@ export default function FavoriteButton({ active, onToggle, name }) {
   const click = () => {
     const next = !active
     onToggle(next)
+    sound.play(next ? 'heartOn' : 'heartOff')
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     if (next) pop()
     else gsap.fromTo(iconRef.current, { scale: 0.86 }, { scale: 1, duration: 0.4, ease: 'power3.out' })
@@ -137,19 +145,21 @@ export default function FavoriteButton({ active, onToggle, name }) {
   return (
     <button
       data-size
+      data-sound="none"
       onClick={click}
       aria-pressed={active}
-      aria-label={active ? `Saved — remove the ${name} from favourites` : `Save the ${name} to favourites`}
-      title={active ? 'Saved' : 'Save'}
-      className="group relative grid h-11 w-11 shrink-0 place-items-center"
+      aria-label={`${active ? `Saved — remove the ${name} from favourites` : `Save the ${name} to favourites`}${shown ? `. Kept by ${count} people` : ''}`}
+      title={shown ? `Kept by ${count} people` : active ? 'Saved' : 'Save'}
+      className="group relative flex h-11 min-w-11 shrink-0 items-center"
       style={{ color: 'rgb(var(--sr-ink) / 0.7)' }}
     >
-      {/* a soft glow, only when the hand is near or the heart is lit */}
-      <span
-        aria-hidden="true"
-        className={`absolute inset-1 rounded-full transition-opacity duration-500 ${active ? 'opacity-70' : 'opacity-0 group-hover:opacity-60'}`}
-        style={{ background: 'radial-gradient(closest-side, rgb(226 50 74 / 0.32), transparent)' }}
-      />
+      <span className="relative grid h-11 w-11 shrink-0 place-items-center">
+      {/* a glow, only when the hand is near or the heart is lit — drawn in
+          pixels like the heart: two stepped rings, the inner one brighter */}
+      <span aria-hidden="true" className={`absolute inset-0 transition-opacity duration-500 ${active ? 'opacity-80' : 'opacity-0 group-hover:opacity-70'}`}>
+        <span className="pixel-glow absolute inset-[3px]" style={{ background: 'rgb(226 50 74 / 0.12)' }} />
+        <span className="pixel-glow absolute inset-[10px]" style={{ background: 'rgb(226 50 74 / 0.16)' }} />
+      </span>
       <span ref={flashRef} aria-hidden="true" className="absolute inset-2 opacity-0" style={{ border: '2px solid rgb(255 214 222 / 0.9)' }} />
       {/* three owners, three layers: the idle float, the hover, the pop */}
       <span className="heart-float block">
@@ -160,6 +170,12 @@ export default function FavoriteButton({ active, onToggle, name }) {
         </span>
       </span>
       <span ref={burstRef} aria-hidden="true" className="pointer-events-none absolute inset-0" />
+      </span>
+      {shown && (
+        <span aria-hidden="true" className="-ml-1.5 pr-1 text-[10px] font-medium tabular-nums tracking-[0.06em] transition-colors duration-500" style={{ color: active ? 'rgb(255 214 222 / 0.95)' : 'rgb(var(--sr-ink) / 0.6)' }}>
+          {compact(count)}
+        </span>
+      )}
     </button>
   )
 }

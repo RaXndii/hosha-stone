@@ -16,7 +16,10 @@ import BuyBar, { SizeSheet } from './BuyBar.jsx'
 import { usePage } from '../../lib/page.jsx'
 import { pageHead, pieceHead } from '../../lib/head.js'
 import { frugal } from '../../lib/net.js'
+import { sound } from '../../lib/sound/index.js'
 import { useShop } from '../../lib/shop.jsx'
+import Plate from '../ui/Plate.jsx'
+import Loupe from '../ui/Loupe.jsx'
 
 const LIGHT_ANCHOR = [0.5, 0.46]
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -54,7 +57,7 @@ function ready(product) {
  */
 export default function Showroom({ initialId, entry }) {
   const { go } = usePage()
-  const { bag, saved, kept, toggleSaved } = useShop()
+  const { bag, saved, kept, keptBy, toggleSaved } = useShop()
   const first = PRODUCTS.find((p) => p.id === initialId) ?? PRODUCTS[0]
   const arrival = useRef(entry)
   // opened by a link to this piece, rather than at the front door
@@ -114,6 +117,12 @@ export default function Showroom({ initialId, entry }) {
   usePointerField(rootRef, { anchor: LIGHT_ANCHOR, zoneRef: stageRef })
   useSpotlight(rootRef)
   useShowcase({ zoneRef: stageRef, cursorRef, parallaxRef, enabled: !closer && !overlay && !ordering && !guide && !sizeSheet })
+
+  // the music is the room's, and moves into each piece's key as it arrives
+  useEffect(() => { sound.scene('room') }, [])
+  useEffect(() => {
+    sound.room(product.theme, Math.max(0, PRODUCTS.findIndex((p) => p.id === productId)))
+  }, [productId, product])
 
   // the address and the name in the tab follow the piece on stage. At the
   // house's own address the house keeps its name: the showroom opens on a
@@ -248,6 +257,7 @@ export default function Showroom({ initialId, entry }) {
     const root = rootRef.current
     const cam = cameraRef.current
     const page = root.querySelectorAll('[data-quiet], [data-quiet-soft], [data-fade-group]')
+    sound.play(closer ? 'portal' : 'close')
     if (closer) {
       gsap.to(page, { opacity: 0, duration: 0.6, ease: 'power2.out', overwrite: 'auto' })
       gsap.to(cam, { scale: 1.09, opacity: 0, duration: 0.85, ease: 'power2.inOut', overwrite: 'auto' })
@@ -268,6 +278,8 @@ export default function Showroom({ initialId, entry }) {
     if (!target) return
     busy.current = true
     setOverlay(null)
+    sound.play('swipe', { dir: d })
+    sound.duck(true)
 
     const root = rootRef.current
     const q = gsap.utils.selector(root)
@@ -306,6 +318,7 @@ export default function Showroom({ initialId, entry }) {
     const q = gsap.utils.selector(root)
     const { d } = pending
     const tl = gsap.timeline({ onComplete: () => { busy.current = false; root.dispatchEvent(new Event('sr-settled')) } })
+    sound.duck(false)
     tl.to(root, { '--sr-dim': 0, duration: 1.2, ease: 'power2.out' }, 0)
     // the neon comes back up with a breath of its own
     tl.fromTo(q('[data-neon-line]'), { opacity: 0.25 }, { opacity: 1, duration: 1.1, ease: 'power2.out', clearProps: 'opacity' }, 0.15)
@@ -528,6 +541,7 @@ export default function Showroom({ initialId, entry }) {
             return (
               <button
                 key={p.id}
+                data-sound="none"
                 onClick={() => { if (!on) requestProduct(p.id, i > pos ? 1 : -1) }}
                 aria-label={p.name}
                 aria-current={on || undefined}
@@ -565,7 +579,7 @@ export default function Showroom({ initialId, entry }) {
         <Pager pos={pos} total={n} dir={dir} />
       </div>
       <div ref={purchaseRef} data-fade-group className="relative z-20 order-2 px-6 pt-9 lg:absolute lg:bottom-[8.5%] lg:right-[max(3rem,4vw)] lg:p-0">
-        <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
+        <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
       </div>
 
       <SearchSheet
@@ -587,21 +601,17 @@ export default function Showroom({ initialId, entry }) {
         onClose={() => setCloser(false)}
         sourceRef={stageRef}
         purchase={
-          <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
+          <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
         }
       />
 
-      {/* the ring that stands in for the cursor over the piece (useShowcase) */}
+      {/* the loupe that stands in for the cursor over the piece (useShowcase) */}
       <div ref={cursorRef} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 z-[55] hidden lg:block" style={{ opacity: 0 }}>
-        <div
-          className="grid h-[74px] w-[74px] place-items-center rounded-full"
-          style={{
-            transform: 'translate(-50%, -50%) scale(0.45)',
-            border: '1px solid rgb(var(--sr-ink) / 0.5)',
-            background: 'rgb(var(--sr-bg0) / 0.2)',
-          }}
-        >
-          <span className="pl-[0.34em] text-[8.5px] font-medium uppercase tracking-[0.34em]" style={{ color: 'rgb(var(--sr-ink))' }}>
+        <div className="relative isolate grid h-[74px] w-[74px] place-items-center" style={{ transform: 'translate(-50%, -50%) scale(0.45)', color: 'rgb(var(--sr-ink) / 0.7)' }}>
+          <Loupe size={74} arm={14} stone={false} hunt={false} className="absolute inset-0 h-full w-full" />
+          {/* the word on a small cut tag, so it reads over a pale cloth as well as a dark one */}
+          <span className="relative isolate py-[5px] pl-[calc(0.5rem+0.34em)] pr-2 text-[8.5px] font-medium uppercase tracking-[0.34em]" style={{ color: 'rgb(var(--sr-ink))' }}>
+            <Plate cut={5} fill="rgb(var(--sr-bg0) / 0.42)" edge="rgb(var(--sr-ink) / 0.12)" />
             Look
           </span>
         </div>
@@ -617,6 +627,7 @@ export default function Showroom({ initialId, entry }) {
         size={size}
         dir={dir}
         saved={saved.includes(product.id)}
+        kept={keptBy(product.id)}
         onSave={(on) => toggleSaved(product.id, on)}
         onChoose={(ref) => { sheetFrom.current = ref.current; setSizeSheet(true) }}
         onOrder={() => setOrdering(true)}

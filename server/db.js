@@ -125,6 +125,17 @@ const MIGRATIONS = [
   CREATE INDEX idx_images_product ON product_images(product_id, position);
   CREATE INDEX idx_orders_created ON orders(created_at);
   `,
+  // who kept which piece: an anonymous id the visitor's browser made up, never
+  // a person — enough to count each visitor once, and nothing more
+  `
+  CREATE TABLE hearts (
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    visitor TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (product_id, visitor)
+  );
+  CREATE INDEX idx_hearts_product ON hearts(product_id);
+  `,
 ]
 
 const { user_version: version } = db.prepare('PRAGMA user_version').get()

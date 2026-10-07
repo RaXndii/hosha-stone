@@ -48,6 +48,8 @@ export function publicProduct(row) {
     was: row.was ?? undefined,
     currency: row.currency,
     added: row.published_at || row.created_at,
+    // how many visitors have kept it — counted, never estimated
+    kept: db.prepare('SELECT COUNT(*) AS n FROM hearts WHERE product_id = ?').get(row.id).n,
     sizes,
     theme: themeFor(row, images),
     hero: { src: hero?.src ?? images[0]?.src ?? '' },

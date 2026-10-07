@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import gsap from 'gsap'
 import { details as detailsOf, turnViews } from '../../data/showroom.js'
 import Turntable from './Turntable.jsx'
+import Plate from '../ui/Plate.jsx'
 
 const ink = (a = 1) => `rgb(var(--sr-ink) / ${a})`
 const shortest = (from, to) => ((((to - from) % 360) + 540) % 360) - 180
@@ -238,17 +239,20 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
         <div data-cl-chrome>
           <button
             ref={closeBtnRef}
+            data-sound="none"
             onClick={close}
             aria-label="Close the closer look"
             className="group flex items-center gap-3 text-[10px] uppercase tracking-[0.3em]"
             style={{ color: ink(0.7) }}
           >
             <span className="hidden transition-colors duration-300 group-hover:text-[rgb(var(--sr-ink))] sm:inline">Close</span>
+            {/* a cut stone that turns a quarter under the hand, like a nut */}
             <span
-              className="grid h-10 w-10 place-items-center rounded-full backdrop-blur-[2px] transition-[transform,border-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:rotate-90 group-hover:border-[rgb(var(--sr-ink)/0.6)]"
-              style={{ border: `1px solid ${ink(0.25)}`, color: 'rgb(var(--sr-ink))', background: 'rgb(var(--sr-glass) / 0.04)' }}
+              className="relative isolate grid h-10 w-10 place-items-center transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:rotate-90"
+              style={{ color: 'rgb(var(--sr-ink))' }}
             >
-              <svg viewBox="0 0 16 16" className="h-3 w-3"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+              <Plate cut={11} fill="rgb(var(--sr-glass) / 0.05)" edge={ink(0.25)} edgeHi={ink(0.65)} />
+              <svg viewBox="0 0 16 16" className="h-3 w-3"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="square" /></svg>
             </span>
           </button>
         </div>
@@ -270,15 +274,15 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
                   aria-label={idx === -1 ? `Show the ${canTurn ? 'whole piece' : 'front'}` : `Show the ${d.label.toLowerCase()}`}
                   className="group flex items-center gap-3"
                 >
+                  {/* each photograph is cut like the rest of the house: a small stone with a window in it */}
                   <span
-                    className="relative block h-[42px] w-[42px] overflow-hidden rounded-full transition-[transform,box-shadow,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06] lg:h-[46px] lg:w-[46px]"
-                    style={{
-                      opacity: on ? 1 : 0.5,
-                      background: 'rgb(var(--sr-bg1))',
-                      boxShadow: on ? '0 0 0 1px rgb(var(--sr-neon) / 0.9), 0 0 16px rgb(var(--sr-neon) / 0.35)' : `0 0 0 1px ${ink(0.18)}`,
-                    }}
+                    className="relative block h-[42px] w-[42px] transition-[transform,filter,opacity] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06] lg:h-[46px] lg:w-[46px]"
+                    style={{ opacity: on ? 1 : 0.5, filter: on ? 'drop-shadow(0 0 8px rgb(var(--sr-neon) / 0.45))' : 'none' }}
                   >
-                    <img src={d.src} alt="" draggable="false" loading="lazy" className={`absolute inset-0 h-full w-full ${d.garment ? 'object-contain p-1.5' : 'object-cover'}`} style={d.focus ? { objectPosition: d.focus } : undefined} />
+                    <span className="facet absolute inset-0 overflow-hidden" style={{ '--cut': '10px', background: 'rgb(var(--sr-bg1))' }}>
+                      <img src={d.src} alt="" draggable="false" loading="lazy" className={`absolute inset-0 h-full w-full ${d.garment ? 'object-contain p-1.5' : 'object-cover'}`} style={d.focus ? { objectPosition: d.focus } : undefined} />
+                    </span>
+                    <Plate cut={10} className="z-[1]" edge={on ? 'rgb(var(--sr-neon) / 0.95)' : ink(0.2)} edgeHi={on ? undefined : ink(0.5)} />
                   </span>
                   <span className="hidden text-[9.5px] uppercase tracking-[0.28em] transition-colors duration-500 lg:inline" style={{ color: on ? ink(0.9) : ink(0.42) }}>
                     {d.label}
@@ -314,16 +318,18 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
 
       {/* zoom, for a hand without a wheel or a pinch */}
       <div className="absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-[max(3rem,env(safe-area-inset-left))] hidden lg:block">
-        <div data-cl-chrome className="flex items-center gap-1 rounded-full px-1.5 py-1 backdrop-blur-[3px]" style={{ border: `1px solid ${ink(0.14)}`, background: 'rgb(var(--sr-glass) / 0.035)' }}>
+        <div data-cl-chrome className="relative isolate flex items-center gap-1 px-1.5 py-1">
+          <Plate cut={10} fill="rgb(var(--sr-glass) / 0.035)" edge={ink(0.14)} />
           {[['−', 1 / 1.35, 'Zoom out'], [null], ['+', 1.35, 'Zoom in']].map(([sym, f, label], i) =>
             sym ? (
               <button
                 key={i}
                 onClick={() => ttRef.current?.zoomBy(f)}
                 aria-label={label}
-                className="grid h-8 w-8 place-items-center rounded-full text-[13px] transition-colors duration-300 hover:bg-[rgb(var(--sr-ink)/0.08)]"
+                className="group relative isolate grid h-8 w-8 place-items-center text-[13px]"
                 style={{ color: ink(0.85) }}
               >
+                <span aria-hidden="true" className="facet absolute inset-0 -z-10 transition-colors duration-300 [--cut:7px] group-hover:bg-[rgb(var(--sr-ink)/0.08)]" />
                 {sym}
               </button>
             ) : (

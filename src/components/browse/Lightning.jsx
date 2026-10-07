@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * A distant purple strike, now and then.
@@ -87,6 +88,8 @@ export default function Lightning({ rootRef }) {
       })
 
       const twice = Math.random() < 0.3
+      // most strikes are far off; now and then one is close enough to tear
+      const distance = Math.random() < 0.2 ? rand(0.1, 0.35) : rand(0.45, 0.95)
       tl = gsap.timeline({
         onComplete: () => { timer = window.setTimeout(strike, rand(7, 16) * 1000 * (phone ? 1.4 : 1)) },
       })
@@ -96,6 +99,8 @@ export default function Lightning({ rootRef }) {
       tl.fromTo(svg, { opacity: 0 }, { opacity: 1, duration: 0.05 }, 0.62)
       tl.fromTo(mainPaths, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.24, ease: 'power2.in' }, 0.62)
       tl.fromTo(branchPaths, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.18, ease: 'power1.in' }, 0.72)
+      // and the sound of it, which travels slower than the light and comes from where it struck
+      tl.call(() => sound.play('thunder', { pan: (x / w) * 2 - 1, distance, twice }), null, 0.84)
       // 4–5: it lands, and the light spreads across the floor and the pieces
       tl.fromTo(impactRef.current, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.35, ease: 'power2.out' }, 0.84)
       tl.fromTo(washRef.current, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' }, 0.84)

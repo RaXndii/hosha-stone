@@ -9,6 +9,9 @@ import Header from '../showroom/Header.jsx'
 import { MobileMenu, SearchSheet } from '../showroom/Overlays.jsx'
 import FavoriteButton from '../showroom/PixelHeart.jsx'
 import Lightning from './Lightning.jsx'
+import Plate from '../ui/Plate.jsx'
+import Loupe from '../ui/Loupe.jsx'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * The archive: every piece in the house, in one quiet room — and, with
@@ -185,7 +188,7 @@ function Filters({ filters, setFilter }) {
 
 /* ------------------------------------------------------------------ a piece */
 
-function Card({ product, saved, onSave, onSelect }) {
+function Card({ product, saved, kept = 0, onSave, onSelect }) {
   const mask = {
     WebkitMaskImage: `url(${product.hero.src})`,
     maskImage: `url(${product.hero.src})`,
@@ -210,6 +213,7 @@ function Card({ product, saved, onSave, onSelect }) {
       >
         {/* the whole piece is the way in */}
         <button
+          data-sound="none"
           onClick={(e) => onSelect(product, e.currentTarget.closest('[data-card]'))}
           aria-label={`View piece: ${product.name}, $${product.price}`}
           className="absolute inset-0 z-[3] focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-[rgb(var(--sr-neon))]"
@@ -221,17 +225,18 @@ function Card({ product, saved, onSave, onSelect }) {
           </span>
           {/* a phone's grid is two pieces wide: the heart goes where a thumb looks for it */}
           <span data-native-cursor className="pointer-events-auto relative z-[5] order-2 ml-auto sm:hidden">
-            <FavoriteButton active={saved} onToggle={onSave} name={product.name} />
+            <FavoriteButton active={saved} onToggle={onSave} name={product.name} count={kept} />
           </span>
           {product.badge && (
             <span
-              className="px-2 py-[3px] text-[8px] font-medium uppercase tracking-[0.26em]"
-              style={
-                product.badge === 'New'
-                  ? { color: 'rgb(var(--sr-ink))', background: 'rgb(var(--sr-neon) / 0.32)', boxShadow: '0 0 0 1px rgb(var(--sr-neon) / 0.5)' }
-                  : { color: ink(0.7), boxShadow: `0 0 0 1px ${ink(0.22)}` }
-              }
+              className="relative isolate px-2 py-[3px] text-[8px] font-medium uppercase tracking-[0.26em]"
+              style={{ color: product.badge === 'New' ? 'rgb(var(--sr-ink))' : ink(0.7) }}
             >
+              <Plate
+                cut={4}
+                fill={product.badge === 'New' ? 'rgb(var(--sr-neon) / 0.32)' : undefined}
+                edge={product.badge === 'New' ? 'rgb(var(--sr-neon) / 0.55)' : ink(0.22)}
+              />
               {product.badge}
             </span>
           )}
@@ -281,7 +286,9 @@ function Card({ product, saved, onSave, onSelect }) {
             style={{ color: ink(0.9) }}
           >
             View piece
-            <span className="grid h-[16px] w-[16px] place-items-center rounded-full text-[10px] leading-none" style={{ boxShadow: '0 0 0 1px rgb(var(--sr-neon) / 0.8)' }}>+</span>
+            <span className="relative isolate grid h-[16px] w-[16px] place-items-center text-[10px] leading-none">
+              <Plate cut={4.5} edge="rgb(var(--sr-neon) / 0.85)" />+
+            </span>
           </span>
         </div>
 
@@ -310,7 +317,7 @@ function Card({ product, saved, onSave, onSelect }) {
               ))}
             </span>
             <span data-native-cursor className="pointer-events-auto relative z-[5] -m-1.5 scale-[0.82]">
-              <FavoriteButton active={saved} onToggle={onSave} name={product.name} />
+              <FavoriteButton active={saved} onToggle={onSave} name={product.name} count={kept} />
             </span>
           </div>
         </div>
@@ -369,7 +376,7 @@ function useCardCursor(zoneRef, cursorRef, enabled) {
 
 export default function Browse({ kept = false }) {
   const { go } = usePage()
-  const { bag, saved, kept: keptPieces, toggleSaved } = useShop()
+  const { bag, saved, kept: keptPieces, keptBy, toggleSaved } = useShop()
   const rootRef = useRef(null)
   const gridRef = useRef(null)
   const cursorRef = useRef(null)
@@ -406,6 +413,7 @@ export default function Browse({ kept = false }) {
   const filtered = !kept && signature !== Object.values(DEFAULTS).join('|')
 
   useEffect(() => { pageHead(kept ? 'saved' : 'browse') }, [kept])
+  useEffect(() => { sound.scene('archive') }, [])
 
   /* ---------------------------------------------- arrival */
   useLayoutEffect(() => {
@@ -450,6 +458,7 @@ export default function Browse({ kept = false }) {
   const select = useCallback((product, card) => {
     if (leaving.current || !card) return
     leaving.current = true
+    sound.play('portal')
     setOverlay(null)
     const img = card.querySelector('[data-card-img]')
     const from = img.getBoundingClientRect()
@@ -584,6 +593,7 @@ export default function Browse({ kept = false }) {
               key={p.id}
               product={p}
               saved={saved.includes(p.id)}
+              kept={keptBy(p.id)}
               onSave={(on) => toggleSaved(p.id, on)}
               onSelect={select}
             />
@@ -632,13 +642,15 @@ export default function Browse({ kept = false }) {
         <img alt="" className="relative h-full w-full object-contain object-bottom" />
       </div>
 
-      {/* the ring that stands in for the cursor over a piece */}
+      {/* the loupe that stands in for the cursor over a piece */}
       <div ref={cursorRef} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 z-[55] hidden lg:block" style={{ opacity: 0 }}>
-        <div
-          className="grid h-[74px] w-[74px] place-items-center rounded-full"
-          style={{ transform: 'translate(-50%, -50%) scale(0.45)', border: '1px solid rgb(var(--sr-ink) / 0.5)', background: 'rgb(var(--sr-bg0) / 0.25)' }}
-        >
-          <span className="pl-[0.34em] text-[8.5px] font-medium uppercase tracking-[0.34em]" style={{ color: 'rgb(var(--sr-ink))' }}>View</span>
+        <div className="relative isolate grid h-[74px] w-[74px] place-items-center" style={{ transform: 'translate(-50%, -50%) scale(0.45)', color: 'rgb(var(--sr-ink) / 0.7)' }}>
+          <Loupe size={74} arm={14} stone={false} hunt={false} className="absolute inset-0 h-full w-full" />
+          {/* the word on a small cut tag, so it reads over a pale cloth as well as a dark one */}
+          <span className="relative isolate py-[5px] pl-[calc(0.5rem+0.34em)] pr-2 text-[8.5px] font-medium uppercase tracking-[0.34em]" style={{ color: 'rgb(var(--sr-ink))' }}>
+            <Plate cut={5} fill="rgb(var(--sr-bg0) / 0.42)" edge="rgb(var(--sr-ink) / 0.12)" />
+            View
+          </span>
         </div>
       </div>
 

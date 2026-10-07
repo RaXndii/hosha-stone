@@ -301,6 +301,20 @@ button {
   }
 }
 
+/* the sound switch: four bars, each on its own period, so they never move as one */
+.sound-bar {
+  transform-origin: 50% 100%;
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sound-bar.is-playing {
+  animation: sound-bar calc(0.82s + var(--i) * 0.19s) ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.31s);
+}
+@keyframes sound-bar {
+  0% { transform: scaleY(0.2); }
+  100% { transform: scaleY(1); }
+}
+
 /* the story: a mote falling down the rule, inviting the page to be read on */
 @keyframes story-cue {
   0% { transform: translateY(-120%); opacity: 0; }
@@ -348,91 +362,188 @@ button {
 }
 
 /* ------------------------------------------------------------------
-   LOOK CLOSER — a small atmospheric portal. Each cloud is an off-centre
-   radial gradient on a layer that only rotates and scales, so the vapour
-   swirls without a single repaint. Colours are the piece's own neon.
+   CUT STONE. The house's controls are cut, not moulded — it is a stone,
+   after all. Corners are chamfered like a stone's girdle, an edge is a
+   single hairline, and a chosen control fills like a gem catching the
+   light: a flat table, and four facets round it lit from up and to the
+   left. One cut at every size, so a size, a price, a close and a
+   photograph read as one set.
+
+     .facet    cuts an element's own corners (--cut)
+     .plate    a cut plate laid behind a control's content (the control
+               is `isolate`): its hairline (--edge; --edge-hi while a hand
+               is on the control; --edge-w), and its gem, lit by --lit from
+               0 to 1 (--gem, the gem's colour; --bevel, its facets' depth)
+     .lozenge  the cut taken all the way: the stone on its point
+
+   A clip takes a box-shadow off with the corners, so a glow belongs on an
+   unclipped parent, as filter: drop-shadow(), which follows the cut.
    ------------------------------------------------------------------ */
-.vapor-cloud {
-  position: absolute;
-  inset: -17px;
-  pointer-events: none;
-  opacity: 0.85;
+/* in the components layer, so a utility on a plate (an inset, a z-index) wins */
+@layer components {
+  .facet,
+  .plate {
+    --cut: 7px;
+    clip-path: polygon(
+      var(--cut) 0,
+      calc(100% - var(--cut)) 0,
+      100% var(--cut),
+      100% calc(100% - var(--cut)),
+      calc(100% - var(--cut)) 100%,
+      var(--cut) 100%,
+      0 calc(100% - var(--cut)),
+      0 var(--cut)
+    );
+  }
+  .plate {
+    --edge: rgb(var(--sr-ink) / 0.2);
+    --edge-w: 1px;
+    --gem: var(--sr-accent);
+    --bevel: 6px;
+    --lit: 0;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    transition: background-color 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .plate::before,
+  .plate::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  /* the gem: a flat table, and the four facets round it */
+  .plate::before {
+    opacity: var(--lit);
+    background:
+      linear-gradient(160deg, rgb(255 255 255 / 0.2), rgb(var(--gem) / 0.2) 55%, rgb(var(--gem) / 0.3)) center /
+        calc(100% - var(--bevel) * 2) calc(100% - var(--bevel) * 2) no-repeat,
+      conic-gradient(
+        from -45deg,
+        rgb(255 255 255 / 0.3) 0 25%,
+        rgb(var(--gem) / 0.3) 0 50%,
+        rgb(var(--gem) / 0.1) 0 75%,
+        rgb(var(--gem) / 0.46) 0
+      );
+    transition: opacity 450ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* the hairline: the same octagon less itself, the edge's width in */
+  .plate::after {
+    --k: calc(var(--cut) + var(--edge-w) * 0.4142);
+    background: var(--edge);
+    clip-path: polygon(
+      evenodd,
+      var(--cut) 0,
+      calc(100% - var(--cut)) 0,
+      100% var(--cut),
+      100% calc(100% - var(--cut)),
+      calc(100% - var(--cut)) 100%,
+      var(--cut) 100%,
+      0 calc(100% - var(--cut)),
+      0 var(--cut),
+      var(--cut) 0,
+      var(--k) var(--edge-w),
+      var(--edge-w) var(--k),
+      var(--edge-w) calc(100% - var(--k)),
+      var(--k) calc(100% - var(--edge-w)),
+      calc(100% - var(--k)) calc(100% - var(--edge-w)),
+      calc(100% - var(--edge-w)) calc(100% - var(--k)),
+      calc(100% - var(--edge-w)) var(--k),
+      calc(100% - var(--k)) var(--edge-w),
+      var(--k) var(--edge-w)
+    );
+    transition: background-color 450ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @media (hover: hover) {
+    .group:hover .plate::after {
+      background: var(--edge-hi, var(--edge));
+    }
+  }
+  .group:focus-visible .plate::after {
+    background: var(--edge-hi, var(--edge));
+  }
+  .lozenge {
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  }
+}
+
+/* ------------------------------------------------------------------
+   THE LOUPE (Loupe.jsx) — the way in to the photographs, and the hand over
+   a piece: the four corners of a viewfinder round a small cut stone. At
+   rest it hunts for focus now and then, by a pixel or two; a hand near it
+   brings the corners in on the stone and lights it; a press shuts them.
+   ------------------------------------------------------------------ */
+.loupe {
+  --focus: 0px;
   transition:
-    transform 800ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1);
+    color 500ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.vapor-cloud > i {
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  will-change: transform;
+.loupe-corner {
+  transform: translate(calc(var(--x) * var(--focus)), calc(var(--y) * var(--focus)));
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.vapor-cloud > i:nth-child(1) {
-  background: radial-gradient(circle at 30% 38%, rgb(var(--sr-neon) / 0.42), transparent 40%);
-  animation: vapor-turn 7s linear infinite;
+.loupe-hunt .loupe-corner > path {
+  animation: loupe-hunt 7s cubic-bezier(0.45, 0, 0.2, 1) infinite;
 }
-.vapor-cloud > i:nth-child(2) {
-  background: radial-gradient(circle at 70% 64%, rgb(var(--sr-light) / 0.2), transparent 38%);
-  animation: vapor-turn 10s linear infinite reverse;
+@keyframes loupe-hunt {
+  0%, 64%, 100% { transform: translate(0, 0); }
+  71% { transform: translate(calc(var(--x) * 2px), calc(var(--y) * 2px)); }
+  77% { transform: translate(calc(var(--x) * -0.6px), calc(var(--y) * -0.6px)); }
+  83% { transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px)); }
 }
-.vapor-cloud > i:nth-child(3) {
-  background: radial-gradient(circle at 52% 24%, rgb(var(--sr-neon) / 0.28), transparent 36%);
-  animation: vapor-breath 5.4s ease-in-out infinite;
+.loupe-gem {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* a quicker current that only rises when a hand is near */
-.vapor-cloud > i:nth-child(4) {
-  background: radial-gradient(circle at 38% 72%, rgb(var(--sr-neon) / 0.36), transparent 36%);
-  animation: vapor-turn 3.8s linear infinite;
-  opacity: 0;
-  transition: opacity 700ms ease;
+.loupe-crown,
+.loupe-pavilion {
+  fill: rgb(var(--sr-neon) / 0);
+  transition: fill 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.group:hover .vapor-cloud,
-.group:focus-visible .vapor-cloud {
-  transform: scale(1.18);
-  opacity: 1;
+@media (hover: hover) {
+  .group:hover .loupe {
+    --focus: 4px;
+    color: rgb(var(--sr-neon));
+    filter: drop-shadow(0 0 5px rgb(var(--sr-neon) / 0.65));
+  }
+  .group:hover .loupe-gem {
+    transform: scale(1.14);
+  }
+  .group:hover .loupe-crown {
+    fill: rgb(var(--sr-neon) / 0.95);
+  }
+  .group:hover .loupe-pavilion {
+    fill: rgb(var(--sr-neon) / 0.45);
+  }
 }
-.group:hover .vapor-cloud > i:nth-child(4),
-.group:focus-visible .vapor-cloud > i:nth-child(4) {
-  opacity: 1;
+.group:focus-visible .loupe {
+  --focus: 4px;
+  color: rgb(var(--sr-neon));
+}
+.loupe.is-shut {
+  --focus: 10px;
+  color: rgb(var(--sr-ink));
+}
+.loupe.is-shut .loupe-corner {
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.5, 0, 0.75, 0);
+}
+.loupe.is-shut .loupe-crown,
+.loupe.is-shut .loupe-pavilion {
+  fill: rgb(var(--sr-ink));
+  transition-duration: 80ms;
 }
 
-/* motes: a dot carried round the ring on a rotating, zero-size arm */
-.vapor-mote {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-  animation: vapor-orbit 10s linear infinite;
-}
-.vapor-mote::after {
-  content: '';
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  border-radius: 9999px;
-  background: rgb(var(--sr-neon));
-  box-shadow: 0 0 4px rgb(var(--sr-neon) / 0.9);
-  transform: translateX(var(--mote-r, 17px));
-  animation: mote-flicker 3.2s ease-in-out infinite;
-}
-
-@keyframes vapor-turn {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.12); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-@keyframes vapor-breath {
-  0%, 100% { transform: scale(0.88) rotate(0deg); opacity: 0.55; }
-  50% { transform: scale(1.16) rotate(40deg); opacity: 1; }
-}
-@keyframes vapor-orbit {
-  to { transform: rotate(360deg); }
-}
-@keyframes mote-flicker {
-  0%, 100% { opacity: 0.15; }
-  50% { opacity: 0.9; }
+/* the heart's own glow is drawn the way the heart is: in pixels, a circle
+   stepped like a game would step it */
+.pixel-glow {
+  clip-path: polygon(
+    25% 0, 75% 0, 75% 12.5%, 87.5% 12.5%, 87.5% 25%, 100% 25%, 100% 75%, 87.5% 75%, 87.5% 87.5%, 75% 87.5%,
+    75% 100%, 25% 100%, 25% 87.5%, 12.5% 87.5%, 12.5% 75%, 0 75%, 0 25%, 12.5% 25%, 12.5% 12.5%, 25% 12.5%
+  );
 }
 
 /* the pixel heart rests, breathing by a pixel */
@@ -442,14 +553,6 @@ button {
 @keyframes heart-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-1.5px); }
-}
-
-/* phone: the portal keeps its clouds, loses the motes and the quick current */
-@media (max-width: 767px) {
-  .vapor-mote,
-  .vapor-cloud > i:nth-child(4) {
-    display: none;
-  }
 }
 
 /* the archive: over a piece a mouse's cursor becomes the "View" ring;

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Drawer from '../ui/Drawer.jsx'
+import Plate from '../ui/Plate.jsx'
 import { MEASURES, SIZE_GUIDE, columnsOf, show, tableFor } from '../../data/sizeGuide.js'
 import { BRAND, WHATSAPP } from '../../data/order.js'
 
@@ -57,13 +58,11 @@ export default function SizeGuide({ open, onClose, product }) {
             {sizes.map(({ label, available }) => (
               <li
                 key={label}
-                className="relative px-3 py-2 text-[10.5px] font-medium tracking-[0.1em]"
-                style={{
-                  color: available ? ink(0.85) : ink(0.3),
-                  boxShadow: `inset 0 0 0 1px ${available ? ink(0.2) : ink(0.07)}`,
-                }}
+                className="relative isolate px-3 py-2 text-[10.5px] font-medium tracking-[0.1em]"
+                style={{ color: available ? ink(0.85) : ink(0.3) }}
                 title={available ? 'Available' : 'Sold out'}
               >
+                <Plate cut={6} edge={available ? ink(0.2) : ink(0.07)} />
                 {label}
                 {!available && (
                   <span aria-hidden="true" className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 -translate-y-1/2 -rotate-[22deg]" style={{ background: ink(0.3) }} />

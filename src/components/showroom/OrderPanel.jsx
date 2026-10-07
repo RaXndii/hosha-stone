@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { BRAND, INSTAGRAM, LANGUAGES, buildOrder, instagramUrl, money, newRef, orderMessage, recordOrder, whatsappUrl } from '../../data/order.js'
+import Plate from '../ui/Plate.jsx'
+import { sound } from '../../lib/sound/index.js'
 
 const ink = (a = 1) => `rgb(var(--sr-ink) / ${a})`
 const FORM_KEY = 'hs-order-form'
@@ -150,6 +152,7 @@ export default function OrderPanel({ open, product, size, onClose }) {
   }
   // the request is recorded the moment the customer leaves to send it
   const continueTo = () => {
+    sound.play('sent')
     recordOrder(order)
     setStep('ready')
   }
@@ -180,8 +183,9 @@ export default function OrderPanel({ open, product, size, onClose }) {
           <span className="text-[9.5px] font-medium uppercase tracking-[0.38em]" style={{ color: 'rgb(var(--sr-neon))' }}>
             {step === 'preview' ? 'Message preview' : step === 'ready' ? 'Request ready' : 'Order request'}
           </span>
-          <button onClick={onClose} aria-label="Close the order request" className="group grid h-10 w-10 place-items-center rounded-full transition-colors duration-300" style={{ border: `1px solid ${ink(0.2)}`, color: ink() }}>
-            <svg viewBox="0 0 16 16" className="h-3 w-3 transition-transform duration-500 group-hover:rotate-90"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+          <button onClick={onClose} aria-label="Close the order request" className="group relative isolate grid h-10 w-10 place-items-center" style={{ color: ink() }}>
+            <Plate cut={11} edge={ink(0.2)} edgeHi={ink(0.55)} />
+            <svg viewBox="0 0 16 16" className="h-3 w-3 transition-transform duration-500 group-hover:rotate-90"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="square" /></svg>
           </button>
         </div>
 
@@ -196,7 +200,7 @@ export default function OrderPanel({ open, product, size, onClose }) {
             <p className="text-[9.5px] uppercase tracking-[0.32em]" style={{ color: ink(0.5) }}>{BRAND} / {order.productNumber || '—'}</p>
             <p className="mt-2 font-display text-[20px] uppercase leading-tight tracking-[0.1em]" style={{ color: ink() }}>{order.productName || 'Unavailable piece'}</p>
             <p className="mt-2 text-[10px] uppercase tracking-[0.28em]" style={{ color: ink(0.7) }}>
-              Size <span className="ml-1.5 inline-grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-[10px] tracking-[0.06em]" style={{ color: ink(), boxShadow: '0 0 0 1px rgb(var(--sr-accent) / 0.8), 0 0 12px rgb(var(--sr-accent) / 0.25)' }}>{order.size || '—'}</span>
+              Size <span className="relative isolate ml-1.5 inline-grid h-6 min-w-6 place-items-center px-1.5 text-[10px] tracking-[0.06em]" style={{ color: ink(), filter: 'drop-shadow(0 0 6px rgb(var(--sr-accent) / 0.4))' }}><Plate cut={5} bevel={4} lit={0.7} edge="rgb(var(--sr-accent) / 0.85)" />{order.size || '—'}</span>
             </p>
           </div>
         </div>
@@ -232,11 +236,13 @@ export default function OrderPanel({ open, product, size, onClose }) {
 
                 <div data-or className="mt-8">
                   <p className="text-[9px] uppercase tracking-[0.32em]" style={{ color: ink(0.45) }}>Message language</p>
-                  <div className="mt-3 inline-flex p-[3px]" style={{ boxShadow: `inset 0 0 0 1px ${ink(0.14)}` }} role="radiogroup" aria-label="Message language">
+                  <div className="relative isolate mt-3 inline-flex p-[3px]" role="radiogroup" aria-label="Message language">
+                    <Plate cut={7} edge={ink(0.14)} />
                     {LANGUAGES.map((l) => {
                       const on = form.language === l.id
                       return (
-                        <button key={l.id} role="radio" aria-checked={on} onClick={() => set('language')(l.id)} className="px-4 py-2 text-[11px] tracking-[0.12em] transition-[background-color,color] duration-500" style={{ background: on ? 'rgb(var(--sr-neon) / 0.18)' : 'transparent', color: on ? ink() : ink(0.55) }}>
+                        <button key={l.id} role="radio" aria-checked={on} onClick={() => set('language')(l.id)} className="relative isolate px-4 py-2 text-[11px] tracking-[0.12em] transition-colors duration-500" style={{ color: on ? ink() : ink(0.55) }}>
+                          <Plate cut={5} fill={on ? 'rgb(var(--sr-neon) / 0.18)' : 'rgb(var(--sr-neon) / 0)'} edge="rgb(var(--sr-neon) / 0)" />
                           {l.label}
                         </button>
                       )
@@ -261,15 +267,15 @@ export default function OrderPanel({ open, product, size, onClose }) {
                           role="radio"
                           aria-checked={on}
                           onClick={() => set('contactMethod')(id)}
-                          className="group relative px-4 py-4 text-left transition-[box-shadow,background-color,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5"
-                          style={{
-                            background: on ? 'rgb(var(--sr-neon) / 0.1)' : 'rgb(var(--sr-ink) / 0.02)',
-                            boxShadow: on ? 'inset 0 0 0 1px rgb(var(--sr-neon) / 0.85), 0 0 22px rgb(var(--sr-neon) / 0.18)' : `inset 0 0 0 1px ${ink(0.12)}`,
-                          }}
+                          className="group relative isolate px-4 py-4 text-left transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5"
+                          style={{ filter: on ? 'drop-shadow(0 0 12px rgb(var(--sr-neon) / 0.22))' : 'none' }}
                         >
+                          <Plate cut={10} fill={on ? 'rgb(var(--sr-neon) / 0.1)' : 'rgb(var(--sr-ink) / 0.02)'} edge={on ? 'rgb(var(--sr-neon) / 0.85)' : ink(0.12)} edgeHi={on ? undefined : ink(0.32)} />
                           <span className="flex items-center justify-between" style={{ color: on ? ink() : ink(0.75) }}>
                             <Icon />
-                            <span className="h-[7px] w-[7px] rounded-full transition-[background-color,box-shadow] duration-500" style={{ background: on ? 'rgb(var(--sr-neon))' : 'transparent', boxShadow: on ? '0 0 8px rgb(var(--sr-neon))' : `inset 0 0 0 1px ${ink(0.3)}` }} />
+                            <svg viewBox="0 0 10 10" aria-hidden="true" className="h-[10px] w-[10px] transition-[filter] duration-500" style={{ filter: on ? 'drop-shadow(0 0 4px rgb(var(--sr-neon)))' : 'none' }}>
+                              <path d="M5 0.7 9.3 5 5 9.3 0.7 5Z" strokeWidth="1" className="transition-[fill,stroke] duration-500" style={{ fill: on ? 'rgb(var(--sr-neon))' : 'transparent', stroke: on ? 'rgb(var(--sr-neon))' : ink(0.35) }} />
+                            </svg>
                           </span>
                           <span className="mt-4 block text-[11px] font-medium uppercase tracking-[0.22em]" style={{ color: ink() }}>{label}</span>
                           <span className="mt-1.5 block text-[10px] tracking-[0.04em]" style={{ color: ink(0.5) }}>{note}</span>
@@ -282,9 +288,10 @@ export default function OrderPanel({ open, product, size, onClose }) {
                 <button
                   data-or
                   onClick={review}
-                  className="group mt-10 flex h-12 w-full items-center justify-between px-5 text-[10.5px] font-medium uppercase tracking-[0.3em] transition-[box-shadow,background-color] duration-500"
-                  style={{ color: ink(), background: 'rgb(var(--sr-neon) / 0.14)', boxShadow: 'inset 0 0 0 1px rgb(var(--sr-neon) / 0.7)' }}
+                  className="group relative isolate mt-10 flex h-12 w-full items-center justify-between px-5 text-[10.5px] font-medium uppercase tracking-[0.3em]"
+                  style={{ color: ink() }}
                 >
+                  <Plate cut={9} fill="rgb(var(--sr-neon) / 0.14)" edge="rgb(var(--sr-neon) / 0.7)" edgeHi="rgb(var(--sr-neon))" />
                   Review message
                   <span className="transition-transform duration-500 group-hover:translate-x-1">→</span>
                 </button>
@@ -312,7 +319,8 @@ export default function OrderPanel({ open, product, size, onClose }) {
                   {message}
                 </pre>
                 <div data-or className="mt-8 flex items-center gap-3">
-                  <button onClick={() => setStep('details')} className="h-12 px-5 text-[10px] font-medium uppercase tracking-[0.3em] transition-colors duration-300" style={{ color: ink(0.75), boxShadow: `inset 0 0 0 1px ${ink(0.18)}` }}>
+                  <button onClick={() => setStep('details')} className="group relative isolate h-12 px-5 text-[10px] font-medium uppercase tracking-[0.3em] transition-colors duration-300" style={{ color: ink(0.75) }}>
+                    <Plate cut={9} edge={ink(0.18)} edgeHi={ink(0.45)} />
                     ← Edit
                   </button>
                   {channel === 'whatsapp' ? (
@@ -320,10 +328,12 @@ export default function OrderPanel({ open, product, size, onClose }) {
                       href={whatsappUrl(order)}
                       target="_blank"
                       rel="noopener noreferrer"
+                      data-sound="none"
                       onClick={continueTo}
-                      className="group flex h-12 flex-1 items-center justify-between px-5 text-[10.5px] font-medium uppercase tracking-[0.26em]"
-                      style={{ color: ink(), background: 'rgb(var(--sr-neon) / 0.16)', boxShadow: 'inset 0 0 0 1px rgb(var(--sr-neon) / 0.8)' }}
+                      className="group relative isolate flex h-12 flex-1 items-center justify-between px-5 text-[10.5px] font-medium uppercase tracking-[0.26em]"
+                      style={{ color: ink() }}
                     >
+                      <Plate cut={9} fill="rgb(var(--sr-neon) / 0.16)" edge="rgb(var(--sr-neon) / 0.8)" edgeHi="rgb(var(--sr-neon))" />
                       <span className="flex items-center gap-3"><WhatsAppIcon /> Continue to WhatsApp</span>
                       <span className="transition-transform duration-500 group-hover:translate-x-1">→</span>
                     </a>
@@ -332,10 +342,12 @@ export default function OrderPanel({ open, product, size, onClose }) {
                       href={instagramUrl()}
                       target="_blank"
                       rel="noopener noreferrer"
+                      data-sound="none"
                       onClick={goInstagram}
-                      className="group flex h-12 flex-1 items-center justify-between px-5 text-[10.5px] font-medium uppercase tracking-[0.26em]"
-                      style={{ color: ink(), background: 'rgb(var(--sr-neon) / 0.16)', boxShadow: 'inset 0 0 0 1px rgb(var(--sr-neon) / 0.8)' }}
+                      className="group relative isolate flex h-12 flex-1 items-center justify-between px-5 text-[10.5px] font-medium uppercase tracking-[0.26em]"
+                      style={{ color: ink() }}
                     >
+                      <Plate cut={9} fill="rgb(var(--sr-neon) / 0.16)" edge="rgb(var(--sr-neon) / 0.8)" edgeHi="rgb(var(--sr-neon))" />
                       <span className="flex items-center gap-3"><InstagramIcon /> Copy &amp; open Instagram</span>
                       <span className="transition-transform duration-500 group-hover:translate-x-1">→</span>
                     </a>

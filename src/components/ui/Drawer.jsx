@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
+import Plate from './Plate.jsx'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * One drawer, for anything that slides in beside the page — the size guide
@@ -16,6 +18,7 @@ export default function Drawer({ open, onClose, title, children }) {
     const panel = panelRef.current
     if (!scrim || !panel) return
     gsap.killTweensOf([scrim, panel])
+    if (mounted.current) sound.play(open ? 'open' : 'close')
 
     if (open) {
       gsap.to(scrim, { autoAlpha: 1, duration: 0.34, ease: 'power2.out' })
@@ -58,12 +61,14 @@ export default function Drawer({ open, onClose, title, children }) {
           <span className="text-[9px] uppercase tracking-ultra text-bone/45">{title}</span>
           <button
             data-vx
+            data-sound="none"
             onClick={onClose}
             aria-label="Close"
-            className="vx grid h-9 w-9 place-items-center rounded-full border border-bone/15 text-bone/60 hover:text-bone"
+            className="vx group grid h-9 w-9 place-items-center text-bone/60 hover:text-bone"
           >
+            <Plate cut={9} edge="rgb(244 242 247 / 0.15)" edgeHi="rgb(244 242 247 / 0.42)" />
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5">
-              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="square" />
             </svg>
           </button>
         </div>

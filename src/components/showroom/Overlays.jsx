@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { CATEGORIES, PRODUCTS, countIn, themeVars } from '../../data/showroom.js'
-import { Glass, PlusMinus } from './Header.jsx'
+import { Glass, PlusMinus, SoundToggle } from './Header.jsx'
 import { INSTAGRAM, WHATSAPP } from '../../data/order.js'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * Shared open/close motion: a scrim and a sheet that drops from the header.
@@ -18,6 +19,7 @@ function useSheet(open, scrimRef, sheetRef, from = -18, onHidden) {
     const sheet = sheetRef.current
     if (!scrim || !sheet) return
     gsap.killTweensOf([scrim, sheet])
+    if (mounted.current) sound.play(open ? 'open' : 'close')
     if (open) {
       gsap.to(scrim, { autoAlpha: 1, duration: 0.4, ease: 'power2.out' })
       gsap.fromTo(sheet, { autoAlpha: 0, y: from }, { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power3.out' })
@@ -115,7 +117,7 @@ export function SearchSheet({ open, onClose, onPick, onCategory }) {
         {asked && <div className="mx-auto max-w-4xl">
           <div className="flex items-center justify-between">
             <span className="text-[9.5px] uppercase tracking-[0.34em]" style={{ color: 'rgb(var(--sr-ink) / 0.5)' }}>Search the house</span>
-            <button onClick={onClose} aria-label="Close search" className="text-[10px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.6)' }}>
+            <button data-sound="none" onClick={onClose} aria-label="Close search" className="text-[10px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.6)' }}>
               Close — Esc
             </button>
           </div>
@@ -199,7 +201,7 @@ export function MobileMenu({ open, onClose, onNav, category, onCategory }) {
         {/* drawn exactly over the page's header, so opening the menu moves nothing */}
         <div className="flex h-[72px] shrink-0 items-center justify-between">
           <span className="font-display text-[17px] tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink))' }}>HOSHA STONE</span>
-          <button onClick={onClose} aria-label="Close menu" className="-mr-2 grid h-11 w-11 place-items-center" style={{ color: 'rgb(var(--sr-ink))' }}>
+          <button data-sound="none" onClick={onClose} aria-label="Close menu" className="-mr-2 grid h-11 w-11 place-items-center" style={{ color: 'rgb(var(--sr-ink))' }}>
             <svg viewBox="0 0 16 16" className="h-4 w-4"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
           </button>
         </div>
@@ -245,7 +247,8 @@ export function MobileMenu({ open, onClose, onNav, category, onCategory }) {
             </div>
           ))}
         </nav>
-        <div className="mt-auto flex gap-8 pt-10 text-[11px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.65)' }}>
+        <SoundToggle label className="mt-auto flex h-11 justify-start self-start pt-10" />
+        <div className="flex gap-8 pt-2 text-[11px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.65)' }}>
           <a className="flex h-11 items-center" href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer">WhatsApp</a>
           <a className="flex h-11 items-center" href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram</a>
         </div>

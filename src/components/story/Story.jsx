@@ -9,6 +9,7 @@ import { pageHead } from '../../lib/head.js'
 import useSpotlight from '../../hooks/useSpotlight.js'
 import Header from '../showroom/Header.jsx'
 import { MobileMenu, SearchSheet } from '../showroom/Overlays.jsx'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * The house, at length.
@@ -173,6 +174,7 @@ export default function Story() {
 
   useSpotlight(rootRef)
   useEffect(() => { pageHead('story') }, [])
+  useEffect(() => { sound.scene('story') }, [])
 
   const enter = useCallback((id) => go('piece', { id, entry: 'return' }), [go])
 

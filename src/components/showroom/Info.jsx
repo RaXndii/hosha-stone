@@ -3,6 +3,9 @@ import gsap from 'gsap'
 import Roll from './Roll.jsx'
 import { pad2 } from '../../data/showroom.js'
 import FavoriteButton from './PixelHeart.jsx'
+import Plate from '../ui/Plate.jsx'
+import Loupe from '../ui/Loupe.jsx'
+import { sound } from '../../lib/sound/index.js'
 
 const ink = (a = 1) => `rgb(var(--sr-ink) / ${a})`
 
@@ -17,39 +20,33 @@ export function Reveal({ as: Tag = 'div', className = '', style, children }) {
   )
 }
 
-function Plus({ className = 'h-[7px] w-[7px]' }) {
-  return (
-    <span aria-hidden="true" className={`relative inline-block ${className}`}>
-      <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2" style={{ background: 'currentColor' }} />
-      <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2" style={{ background: 'currentColor' }} />
-    </span>
-  )
-}
-
 /**
- * The way into the photographs: a small atmospheric portal. Vapour turns
- * slowly around the ring — two clouds drifting in opposite directions, one
- * breathing, a few motes in orbit — all transform and opacity, so the loop
- * costs nothing. A hand nearby stirs it; a press makes it bloom outward, and
- * the piece opens into the closer look through it.
+ * The way into the photographs: a loupe — the corners of a viewfinder round a
+ * small cut stone. At rest it hunts for focus now and then, by a pixel; a hand
+ * near it brings the corners in on the stone and lights it; a press shuts
+ * them, the light flares out through them, and the piece opens into the
+ * closer look.
  */
 function LookCloser({ product, onLook, onPrefetch }) {
   const ref = useRef(null)
+  const timer = useRef(0)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
   const enter = () => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { onLook(); return }
     const q = gsap.utils.selector(ref.current)
-    gsap.timeline()
-      .to(q('[data-look-ring]'), { scale: 0.84, duration: 0.1, ease: 'power2.in' })
-      .to(q('[data-look-ring]'), { scale: 1, duration: 0.7, ease: 'power3.out' })
-    gsap.fromTo(q('[data-vapor-burst]'), { scale: 0.5, opacity: 0.95 }, { scale: 3.4, opacity: 0, duration: 1, ease: 'power2.out' })
-    gsap.fromTo(q('.vapor-cloud'), { scale: 1.2 }, { scale: 1.75, duration: 0.28, ease: 'power2.out', yoyo: true, repeat: 1, clearProps: 'transform' })
-    // the opening starts as the bloom peaks, so the two read as one motion
+    const loupe = q('.loupe')[0]
+    loupe?.classList.add('is-shut')
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => loupe?.classList.remove('is-shut'), 700)
+    gsap.fromTo(q('[data-look-burst]'), { scale: 0.4, opacity: 1 }, { scale: 3.2, opacity: 0, duration: 0.9, ease: 'power2.out', delay: 0.08 })
+    // the opening starts as the corners shut, so the two read as one motion
     window.setTimeout(onLook, 170)
   }
   return (
     <button
       ref={ref}
       data-fade
+      data-sound="none"
       onClick={enter}
       onPointerEnter={onPrefetch}
       onFocus={onPrefetch}
@@ -62,28 +59,14 @@ function LookCloser({ product, onLook, onPrefetch }) {
         style={{ background: ink(0.6) }}
       />
       <span className="transition-colors duration-500 group-hover:text-[rgb(var(--sr-ink))]">Look closer</span>
-      <span className="vapor relative grid h-[30px] w-[30px] place-items-center">
-        <span aria-hidden="true" className="vapor-cloud">
-          <i /><i /><i /><i />
-        </span>
-        <span aria-hidden="true" className="vapor-mote" style={{ animationDuration: '9s' }} />
-        <span aria-hidden="true" className="vapor-mote" style={{ animationDuration: '13s', animationDirection: 'reverse', '--mote-r': '19px' }} />
-        <span aria-hidden="true" className="vapor-mote" style={{ animationDuration: '11s', animationDelay: '-4s', '--mote-r': '15px' }} />
+      <span className="relative grid h-[34px] w-[34px] place-items-center">
         <span
-          data-vapor-burst
+          data-look-burst
           aria-hidden="true"
-          className="pointer-events-none absolute -inset-2 rounded-full opacity-0"
-          style={{ background: 'radial-gradient(closest-side, rgb(var(--sr-neon) / 0.55), rgb(var(--sr-light) / 0.12) 60%, transparent)' }}
+          className="lozenge pointer-events-none absolute -inset-1 opacity-0"
+          style={{ background: 'radial-gradient(closest-side, rgb(var(--sr-neon) / 0.7), rgb(var(--sr-light) / 0.16) 55%, transparent)' }}
         />
-        <span
-          data-look-ring
-          className="relative grid h-[30px] w-[30px] place-items-center rounded-full backdrop-blur-[1px] transition-[transform,border-color,box-shadow,background-color] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.08] group-hover:border-[rgb(var(--sr-neon))] group-hover:bg-[rgb(var(--sr-neon)/0.1)] group-hover:shadow-[0_0_18px_rgb(var(--sr-neon)/0.5)]"
-          style={{ border: `1px solid ${ink(0.5)}`, background: 'rgb(var(--sr-bg0) / 0.25)' }}
-        >
-          <span className="transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:rotate-90">
-            <Plus />
-          </span>
-        </span>
+        <Loupe className="relative h-[34px] w-[34px]" />
       </span>
     </button>
   )
@@ -143,6 +126,7 @@ export function NextPiece({ next, onNext }) {
   return (
     <button
       data-fade
+      data-sound="none"
       onClick={onNext}
       aria-label={`Next piece: ${next.name}`}
       className="group block text-left"
@@ -171,10 +155,11 @@ export function NextPiece({ next, onNext }) {
 }
 
 /**
- * Sizes as small glass beads. Available sizes carry a hairline ring, sold-out
- * ones are struck through and fall back, and the chosen one becomes a lit
- * bead: a glassy highlight, the piece's accent glowing inside, a slight lift.
- * The bead is the inner span — the button itself belongs to GSAP's entrances.
+ * Sizes as small cut stones. Each is an octagon with a hairline edge; sold-out
+ * ones are struck through and fall back, and the chosen one is lit as a gem —
+ * its table and facets in the piece's accent, a polished edge, a glow, a
+ * slight lift. The stone is the inner span — the button itself belongs to
+ * GSAP's entrances.
  */
 function Sizes({ sizes, selected, onSelect, nudge }) {
   return (
@@ -189,24 +174,29 @@ function Sizes({ sizes, selected, onSelect, nudge }) {
             aria-pressed={available ? on : undefined}
             aria-label={available ? `Size ${label}` : `Size ${label}, sold out`}
             title={available ? undefined : 'Sold out'}
-            onClick={() => available && onSelect(on ? null : label)}
+            data-sound="none"
+            onClick={() => {
+              if (!available) return
+              sound.play(on ? 'soft' : 'bead', { index: sizes.findIndex((s) => s.label === label), count: sizes.length })
+              onSelect(on ? null : label)
+            }}
             className={`group grid h-11 min-w-11 place-items-center lg:h-[38px] lg:min-w-[36px] ${available ? '' : 'cursor-not-allowed'}`}
           >
             <span
-              className={`relative grid h-[32px] min-w-[32px] place-items-center rounded-full px-1 text-[10.5px] font-medium tracking-[0.08em] transition-[transform,color,border-color,box-shadow,background] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                on ? 'scale-[1.08]' : available ? 'group-hover:scale-[1.05] group-hover:border-[rgb(var(--sr-ink)/0.5)] group-hover:text-[rgb(var(--sr-ink))] group-active:scale-95' : ''
+              className={`relative isolate grid h-[32px] min-w-[32px] place-items-center px-1.5 text-[10.5px] font-medium tracking-[0.08em] transition-[transform,color,filter] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                on ? 'scale-[1.08]' : available ? 'group-hover:scale-[1.05] group-active:scale-95' : ''
               }`}
               style={{
                 color: on ? 'rgb(255 255 255)' : available ? ink(0.74) : ink(0.22),
-                border: `1px solid ${on ? ink(0.9) : nudge && available ? 'rgb(var(--sr-accent) / 0.75)' : available ? ink(0.16) : ink(0.06)}`,
-                background: on
-                  ? 'radial-gradient(circle at 34% 28%, rgb(255 255 255 / 0.26), rgb(var(--sr-accent) / 0.2) 55%, rgb(var(--sr-accent) / 0.08))'
-                  : 'transparent',
-                boxShadow: on
-                  ? '0 0 16px rgb(var(--sr-accent) / 0.42), inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -6px 10px rgb(var(--sr-accent) / 0.18)'
-                  : 'none',
+                filter: on ? 'drop-shadow(0 0 7px rgb(var(--sr-accent) / 0.55))' : 'none',
               }}
             >
+              <Plate
+                cut={6}
+                lit={on}
+                edge={on ? 'rgb(255 255 255 / 0.82)' : nudge && available ? 'rgb(var(--sr-accent) / 0.8)' : available ? ink(0.18) : ink(0.06)}
+                edgeHi={!on && available ? ink(0.55) : undefined}
+              />
               {label}
               {!available && (
                 <span aria-hidden="true" className="absolute left-1/2 top-1/2 h-px w-[62%] -translate-x-1/2 -translate-y-1/2 -rotate-[32deg]" style={{ background: ink(0.26) }} />
@@ -221,12 +211,13 @@ function Sizes({ sizes, selected, onSelect, nudge }) {
 
 /**
  * Value first, then the price: the original figure sits small and struck
- * above, the price the piece costs now settles beneath it in full weight. The
- * ring and the line beneath it are the way to order: with a size chosen they
- * open the order request; without one they ask for a size, and the sizes
- * answer with a ring. The heart beside it is a separate thing — a favourite.
+ * above, the price the piece costs now settles beneath it in full weight, set
+ * in a cut stone. The stone and the line beneath it are the way to order:
+ * with a size chosen the stone lights and they open the order request;
+ * without one they ask for a size, and the sizes answer with an edge of
+ * light. The heart beside it is a separate thing — a favourite.
  */
-export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, onSizeGuide }) {
+export function Purchase({ product, size, onSize, onOrder, dir, saved, kept = 0, onSave, onSizeGuide }) {
   const [state, setState] = useState(null) // null | 'ask'
   const sizesRef = useRef(null)
   const btnRef = useRef(null)
@@ -240,6 +231,7 @@ export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, o
   }
   const press = () => {
     gsap.fromTo(btnRef.current, { scale: 0.95 }, { scale: 1, duration: 0.7, ease: 'power3.out' })
+    sound.play(size ? 'order' : 'deny')
     if (!size) {
       flash('ask', 1800)
       // the sizes lean toward the visitor, once — no alert
@@ -258,25 +250,31 @@ export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, o
     // run off the edge of the screen, where they could not be reached
     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-3 lg:flex-col-reverse lg:flex-nowrap lg:items-end lg:gap-3 xl:flex-row xl:items-center xl:gap-4">
       <div className="flex items-center gap-2.5 lg:gap-3">
-      <FavoriteButton active={saved} onToggle={onSave} name={product.name} />
-      <div className="flex flex-col items-center">
+      <FavoriteButton active={saved} onToggle={onSave} name={product.name} count={kept} />
+      {/* as wide as its longest caption, so the row stays still as the caption changes */}
+      <div className="flex min-w-[100px] flex-col items-center">
         <button
           ref={btnRef}
           data-size
+          data-sound="none"
           onClick={press}
           aria-label={
             size
               ? `Order size ${size} — $${product.price}`
               : `$${product.price}${product.was ? `, was $${product.was}` : ''}. Choose a size to order`
           }
-          className="relative grid h-[76px] w-[76px] shrink-0 place-content-center gap-1 rounded-full text-center transition-[border-color,box-shadow,background-color] duration-700"
-          style={{
-            color: ink(),
-            border: `1px solid ${size ? 'rgb(var(--sr-accent) / 0.9)' : ink(0.42)}`,
-            background: 'transparent',
-            boxShadow: size ? '0 0 22px rgb(var(--sr-accent) / 0.3), inset 0 0 12px rgb(var(--sr-accent) / 0.12)' : 'none',
-          }}
+          className="group relative isolate grid h-[76px] w-[76px] shrink-0 place-content-center gap-1 text-center transition-[filter] duration-700"
+          style={{ color: ink(), filter: size ? 'drop-shadow(0 0 12px rgb(var(--sr-accent) / 0.38))' : 'none' }}
         >
+          {/* an emerald cut in its setting: the stone's edge, and the bezel's inside it */}
+          <Plate
+            cut={19}
+            bevel={10}
+            lit={size ? 0.5 : 0}
+            edge={size ? 'rgb(var(--sr-accent) / 0.95)' : ink(0.42)}
+            edgeHi={size ? 'rgb(255 255 255 / 0.9)' : ink(0.7)}
+          />
+          <Plate cut={16.6} className="inset-1" edge={size ? 'rgb(var(--sr-accent) / 0.45)' : ink(0.12)} />
           {product.was ? (
             <span data-price-was className="relative mx-auto block text-[10px] leading-none tracking-[0.06em]" style={{ color: ink(0.42) }}>
               <Roll value={`$${product.was}`} dir={dir} duration={0.5} />
@@ -289,6 +287,7 @@ export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, o
         </button>
         <button
           data-order-cta
+          data-sound="none"
           onClick={press}
           tabIndex={-1}
           aria-hidden="true"
@@ -307,6 +306,7 @@ export function Purchase({ product, size, onSize, onOrder, dir, saved, onSave, o
         {onSizeGuide && (
           <button
             data-size
+            data-sound="open"
             onClick={onSizeGuide}
             className="group/guide relative mt-0.5 flex h-11 items-center text-[9.5px] font-medium uppercase tracking-[0.28em] transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] lg:mt-2 lg:h-auto lg:py-1 lg:text-[8.5px]"
             style={{ color: ink(0.42) }}

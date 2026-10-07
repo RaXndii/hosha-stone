@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * A garment you can turn, built from its real photographs.
@@ -264,6 +265,7 @@ export default function Turntable({ views, fallbackSrc, ref, onFrame, onInteract
     const presence = new Array(MAX_VIEWS).fill(0)
     let active = -1
     let lastT = performance.now()
+    let lastDetent = 0
 
     const upload = (i, img, pot) => {
       // power-of-two so the frame can be mipmapped: no shimmer when it is small
@@ -405,7 +407,11 @@ export default function Turntable({ views, fallbackSrc, ref, onFrame, onInteract
       // resting between two does not flicker
       const best = bestView()
       if (best >= 0 && best !== active) {
-        if (active < 0 || !loaded[active] || quality(best) > quality(active) * 1.06) active = best
+        if (active < 0 || !loaded[active] || quality(best) > quality(active) * 1.06) {
+          // turning past a real photograph clicks, like a dial past a detent
+          if (active >= 0 && now - lastDetent > 70) { sound.play('detent'); lastDetent = now }
+          active = best
+        }
       }
       for (let i = 0; i < MAX_VIEWS; i++) {
         const target = i === active ? 1 : 0

@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import Roll from './Roll.jsx'
 import FavoriteButton from './PixelHeart.jsx'
+import Plate from '../ui/Plate.jsx'
+import { sound } from '../../lib/sound/index.js'
 
 /**
  * Buying, where a thumb already is.
@@ -35,6 +37,7 @@ export function SizeSheet({ open, onClose, product, size, onSize, onOrder, onSiz
     const scrim = scrimRef.current
     const sheet = sheetRef.current
     gsap.killTweensOf([scrim, sheet])
+    if (mounted.current) sound.play(open ? 'open' : 'close')
     if (open) {
       gsap.set(sheet, { visibility: 'visible' })
       gsap.to(scrim, { autoAlpha: 1, duration: 0.35, ease: 'power2.out' })
@@ -130,12 +133,16 @@ export function SizeSheet({ open, onClose, product, size, onSize, onOrder, onSiz
               </p>
             </div>
             <button
+              data-sound="none"
               onClick={onClose}
               aria-label="Close"
-              className="-mr-2 -mt-1 grid h-11 w-11 shrink-0 place-items-center"
+              className="group -mr-2 -mt-1 grid h-11 w-11 shrink-0 place-items-center"
               style={{ color: ink(0.7) }}
             >
-              <svg viewBox="0 0 16 16" className="h-[14px] w-[14px]" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+              <span className="relative isolate grid h-9 w-9 place-items-center">
+                <Plate cut={9} edge={ink(0.16)} />
+                <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="square" /></svg>
+              </span>
             </button>
           </div>
 
@@ -149,30 +156,40 @@ export function SizeSheet({ open, onClose, product, size, onSize, onOrder, onSiz
                   disabled={!available}
                   aria-pressed={available ? on : undefined}
                   aria-label={available ? `Size ${label}` : `Size ${label}, sold out`}
-                  onClick={() => onSize(on ? null : label)}
-                  className="relative grid h-14 place-items-center text-[13px] font-medium tracking-[0.1em] transition-[color,box-shadow,background] duration-300 active:scale-[0.97]"
+                  data-sound="none"
+                  onClick={() => {
+                    sound.play(on ? 'soft' : 'bead', { index: sizes.findIndex((z) => z.label === label), count: sizes.length })
+                    onSize(on ? null : label)
+                  }}
+                  className="group relative isolate grid h-14 place-items-center text-[13px] font-medium tracking-[0.1em] transition-[color,filter,transform] duration-300 active:scale-[0.97]"
                   style={{
                     transitionTimingFunction: EASE,
                     color: on ? 'rgb(255 255 255)' : available ? ink(0.85) : ink(0.24),
-                    boxShadow: on
-                      ? '0 0 0 1px rgb(var(--sr-accent) / 0.95), 0 0 22px rgb(var(--sr-accent) / 0.35), inset 0 0 14px rgb(var(--sr-accent) / 0.18)'
-                      : `inset 0 0 0 1px ${available ? ink(0.18) : ink(0.06)}`,
-                    background: on ? 'radial-gradient(circle at 34% 28%, rgb(255 255 255 / 0.18), rgb(var(--sr-accent) / 0.16) 60%, rgb(var(--sr-accent) / 0.06))' : 'transparent',
+                    filter: on ? 'drop-shadow(0 0 10px rgb(var(--sr-accent) / 0.45))' : 'none',
                   }}
                 >
+                  <Plate cut={10} bevel={9} lit={on} edge={on ? 'rgb(255 255 255 / 0.85)' : available ? ink(0.2) : ink(0.06)} />
                   {label}
                   {!available && (
-                    <>
-                      <span aria-hidden="true" className="absolute left-1/2 top-1/2 h-px w-[46%] -translate-x-1/2 -translate-y-1/2 -rotate-[24deg]" style={{ background: ink(0.24) }} />
-                      <span aria-hidden="true" className="absolute inset-x-0 bottom-1.5 text-center text-[8.5px] uppercase tracking-[0.18em]" style={{ color: ink(0.3) }}>Sold out</span>
-                    </>
+                    <span aria-hidden="true" className="absolute left-1/2 top-1/2 h-px w-[46%] -translate-x-1/2 -translate-y-1/2 -rotate-[24deg]" style={{ background: ink(0.24) }} />
                   )}
                 </button>
               )
             })}
           </div>
 
-          <div data-sheet-in className="mt-3 flex justify-end">
+          {/* what a struck size means, said once rather than squeezed into every stone */}
+          <div data-sheet-in className="mt-3 flex items-center justify-between gap-4">
+            {sizes.some((z) => !z.available) ? (
+              <span aria-hidden="true" className="flex items-center gap-2.5 text-[9.5px] uppercase tracking-[0.24em]" style={{ color: ink(0.42) }}>
+                <span className="relative block h-3 w-3.5">
+                  <span className="absolute left-0 top-1/2 h-px w-full -rotate-[24deg]" style={{ background: ink(0.42) }} />
+                </span>
+                Sold out
+              </span>
+            ) : (
+              <span />
+            )}
             <button
               onClick={onSizeGuide}
               className="-mr-2 flex h-11 items-center px-2 text-[10px] uppercase tracking-[0.28em] underline decoration-[rgb(var(--sr-ink)/0.3)] underline-offset-[6px]"
@@ -185,15 +202,16 @@ export function SizeSheet({ open, onClose, product, size, onSize, onOrder, onSiz
           <button
             data-sheet-in
             disabled={!chosen}
-            onClick={() => onOrder(size)}
-            className="mt-3 flex h-14 w-full items-center justify-between px-5 text-[11px] font-medium uppercase tracking-[0.28em] transition-[background,box-shadow,color,opacity] duration-500 disabled:cursor-not-allowed"
+            data-sound="none"
+            onClick={() => { sound.play('order'); onOrder(size) }}
+            className="relative isolate mt-3 flex h-14 w-full items-center justify-between px-5 text-[11px] font-medium uppercase tracking-[0.28em] transition-[color,filter,opacity] duration-500 disabled:cursor-not-allowed"
             style={{
               transitionTimingFunction: EASE,
               color: chosen ? 'rgb(var(--sr-bg0))' : ink(0.4),
-              background: chosen ? 'rgb(var(--sr-ink))' : 'transparent',
-              boxShadow: chosen ? '0 0 30px rgb(var(--sr-accent) / 0.28)' : `inset 0 0 0 1px ${ink(0.14)}`,
+              filter: chosen ? 'drop-shadow(0 0 14px rgb(var(--sr-accent) / 0.35))' : 'none',
             }}
           >
+            <Plate cut={10} fill={chosen ? 'rgb(var(--sr-ink))' : 'rgb(var(--sr-ink) / 0)'} edge={chosen ? 'rgb(var(--sr-ink) / 0)' : ink(0.16)} />
             <span>{chosen ? `Order — size ${size}` : 'Choose a size above'}</span>
             <span className="tabular-nums tracking-[0.08em]">${product.price}</span>
           </button>
@@ -208,7 +226,7 @@ export function SizeSheet({ open, onClose, product, size, onSize, onOrder, onSiz
 
 /* ------------------------------------------------------------------ the bar */
 
-export default function BuyBar({ product, size, dir, saved, onSave, onChoose, onOrder, watchRef, hidden, lit }) {
+export default function BuyBar({ product, size, dir, saved, kept = 0, onSave, onChoose, onOrder, watchRef, hidden, lit }) {
   const barRef = useRef(null)
   const chooseRef = useRef(null)
   // the purchase on the page is in view: the bar has nothing to add
@@ -244,7 +262,7 @@ export default function BuyBar({ product, size, dir, saved, onSave, onChoose, on
       inert={!show || undefined}
     >
       <div className="buy-bar flex items-center gap-3">
-        <FavoriteButton active={saved} onToggle={onSave} name={product.name} />
+        <FavoriteButton active={saved} onToggle={onSave} name={product.name} count={kept} />
         <div className="min-w-0 flex-1" aria-label={`$${product.price}${product.was ? `, was $${product.was}` : ''}`}>
           {product.was ? (
             <span className="relative mr-2 inline-block text-[11px] tabular-nums tracking-[0.04em]" style={{ color: ink(0.45) }}>
@@ -258,15 +276,16 @@ export default function BuyBar({ product, size, dir, saved, onSave, onChoose, on
         </div>
         <button
           ref={chooseRef}
-          onClick={() => (size ? onOrder(size) : onChoose(chooseRef))}
-          className="flex h-12 shrink-0 items-center gap-3 px-5 text-[10.5px] font-medium uppercase tracking-[0.26em] transition-[background,box-shadow,color] duration-500 active:scale-[0.98]"
+          data-sound="none"
+          onClick={() => { if (size) { sound.play('order'); onOrder(size) } else onChoose(chooseRef) }}
+          className="relative isolate flex h-12 shrink-0 items-center gap-3 px-5 text-[10.5px] font-medium uppercase tracking-[0.26em] transition-[color,filter,transform] duration-500 active:scale-[0.98]"
           style={{
             transitionTimingFunction: EASE,
             color: size ? 'rgb(var(--sr-bg0))' : ink(),
-            background: size ? 'rgb(var(--sr-ink))' : 'transparent',
-            boxShadow: size ? '0 0 26px rgb(var(--sr-accent) / 0.3)' : `inset 0 0 0 1px ${ink(0.42)}`,
+            filter: size ? 'drop-shadow(0 0 12px rgb(var(--sr-accent) / 0.35))' : 'none',
           }}
         >
+          <Plate cut={9} fill={size ? 'rgb(var(--sr-ink))' : 'rgb(var(--sr-ink) / 0)'} edge={size ? 'rgb(var(--sr-ink) / 0)' : ink(0.42)} />
           <Roll value={size ? `Order · ${size}` : 'Choose a size'} duration={0.45} />
           <svg viewBox="0 0 22 12" className="h-[10px] w-[18px]" aria-hidden="true">
             <path d="M1 6h19M15 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />

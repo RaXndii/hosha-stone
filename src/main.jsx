@@ -4,6 +4,9 @@ import './fonts.css'
 import './index.css'
 import App from './App.jsx'
 import { loadCatalogue } from './lib/catalogue.js'
+import { installSound } from './lib/sound/index.js'
+
+installSound()
 
 // the catalogue comes from the server; the site renders once it is in (or once it is clear there is none)
 loadCatalogue().finally(() => {

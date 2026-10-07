@@ -77,6 +77,62 @@ photograph it opens on is asked for before any script runs, and only the
 pieces a swipe can reach next are fetched ahead — none at all with Data Saver
 on.
 
+## Sound
+
+The site has its own music and a sound for every touch. None of it is a
+recording: it is all made in the browser as it plays (`src/lib/sound/`), so
+there is no audio to download, a phone pays nothing for it, and nothing is
+borrowed from anyone — the heart's sound is in the spirit of an old game's
+pickup, but it is the house's own.
+
+- **Nothing plays until the visitor touches the page.** Browsers insist on
+  it, and it is right. The first tap anywhere starts the music, which fades
+  in over several seconds; it pauses whenever the tab is out of sight.
+- **The four bars in the header turn it off** (and on again); on a phone they
+  are also at the foot of the menu. The choice is remembered on the device.
+- **On a phone it behaves like a game, not a video.** It plays alongside the
+  visitor's own music rather than stopping it, and a phone on silent stays
+  silent.
+- **Each page has its music.** The showroom is warm (Dm9 · B♭maj7 · Fmaj9 ·
+  C6/9) and moves to a new key with each piece. The archive is dark — open
+  fifths and wind — and thunder answers the lightning: from the side of the
+  screen it struck, late if it was far off (a long roll), almost at once if
+  it was close (a crack first). The Story is lighter, with plucked notes.
+- **Every control has a sound, in tune with the music.** Buttons and links
+  tap; the sizes are notes of the chord, the smallest size lowest; ordering
+  rings a chord, and ordering without a size answers with a soft "no";
+  panels open and close, pieces swipe past, and the piece clicks as it turns
+  under Look closer.
+- **Balanced, not loud.** Measured offline at the site's own mix: the music
+  sits near −25 dBFS, taps at −30 to −35, sizes and the heart near −22 to
+  −25, an order near −19, thunder near −17 — and one compressor over
+  everything, so nothing clips.
+
+To change a control's sound, give it `data-sound="<name>"` (the names are
+`SOUNDS` in `src/lib/sound/recipes.js`), or `data-sound="none"` for silence.
+To start with sound off until a visitor turns it on, make `readPref()` in
+`src/lib/sound/index.js` return `true` only for a stored `'on'`.
+
+## Kept counts
+
+A piece shows how many people have kept it (the heart) once **12** have —
+fewer says little. It is a true count and nothing else: no stars, no
+rating, nothing seeded. Each browser makes up a random id for itself (not a
+person, an account or an address), tells the server which pieces it has
+kept, and the server counts distinct ids per piece (`hearts` in the
+database). Telling it again changes nothing; letting a heart go takes it
+off. The threshold is `KEPT_SHOWN_FROM` in `src/lib/shop.jsx`.
+
+## Cut stone
+
+The controls are cut, not rounded — corners chamfered like a stone, a single
+hairline edge, and a chosen size, price or tag lit as a gem in the piece's
+own colour. Look closer is a loupe: a viewfinder round a small cut stone,
+which closes in under a hand. One set of shapes does all of it — `.facet`,
+`.plate` and `.lozenge` in `src/index.css` (under "CUT STONE"),
+`src/components/ui/Plate.jsx` and `src/components/ui/Loupe.jsx` — so a new
+control takes the same cut by laying a `<Plate>` behind its content.
+
 ## Share cards
 
 `server/share.js` draws the picture a shared link shows — 1200×630, the piece
@@ -102,6 +158,8 @@ The server also answers `/robots.txt` and `/sitemap.xml`, and writes
 | Server and API | `server/` |
 | Tags a scraper reads; share cards | `server/meta.js`, `server/share.js` |
 | Typefaces (Inter, Playfair Display — SIL OFL, licences beside them) | `public/fonts/` |
+| Music and sounds (made in the browser) | `src/lib/sound/` |
+| The cut-stone shapes | `src/index.css` ("CUT STONE"), `src/components/ui/Plate.jsx`, `Loupe.jsx` |
 | Icons for the tab and a phone's home screen | `public/favicon.svg`, `public/*icon*.png` |
 | Admin app | `admin/index.html`, `src/admin/` |
 | Customer site | `index.html`, `src/` |
@@ -147,8 +205,10 @@ Any host that runs Node and keeps a persistent disk (Render, Railway, Fly, a VPS
   database, never from the browser.
 - Uploads: up to 15 MB, checked as real images, re-encoded to WebP, stored
   under random names.
-- `/saved` is this visitor's own and is never indexed; what they kept is held
-  in their browser and is never sent anywhere.
+- `/saved` is this visitor's own and is never indexed. What they kept is held
+  in their browser; the server is told only which pieces, under a random id
+  the browser made up, to count them — no name, account or address. That
+  route is rate-limited and accepts only pieces that exist.
 
 Without a server (e.g. a static preview) the site falls back to the bundled
 catalogue in `src/data/static-catalogue.js`.
