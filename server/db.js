@@ -142,6 +142,11 @@ const MIGRATIONS = [
   ALTER TABLE products ADD COLUMN film TEXT;
   ALTER TABLE products ADD COLUMN spots TEXT;
   `,
+  // the inside of a piece that opens (JSON: src, at, zip, spots — see the
+  // `inside` entry in src/data/static-catalogue.js)
+  `
+  ALTER TABLE products ADD COLUMN inside TEXT;
+  `,
 ]
 
 const { user_version: version } = db.prepare('PRAGMA user_version').get()

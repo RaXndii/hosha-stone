@@ -100,6 +100,17 @@ on.
   to move, swipe for the next.
 - **The film**, if the piece has one, has its own card among them and opens
   out of it.
+- **A piece that opens** (the Midnight Harrington) has a pull on its zip.
+  Drag it down and the jacket parts from the collar to show its inside,
+  with the details inside marked; let go past a third of the way and it
+  opens the rest by itself, and the zip's teeth tick as the pull passes
+  them. Drag it back up (or press "Close it") and it closes and turns
+  again. It works from the keyboard as a slider too. It needs a photograph
+  of the piece laid open, taken from where the front was, cut out the same
+  way: the `inside` entry in `src/data/static-catalogue.js` says where it
+  falls over the front, where the zip runs, and what is inside
+  (`src/components/showroom/Unzip.jsx`). It is set up in the bundled
+  catalogue; the admin does not edit it yet.
 
 ## Films
 
@@ -255,7 +266,7 @@ The server also answers `/robots.txt` and `/sitemap.xml`, and writes
 Set `HS_STORAGE=/path` to keep it elsewhere (e.g. a persistent disk on a host).
 `storage/share/` is the one part that need not be kept: it redraws itself.
 
-On a fresh database the server seeds the house's current six pieces, the About
+On a fresh database the server seeds the house's current seven pieces, the About
 text and the ordering settings, so the site starts exactly as it was.
 
 ## The size guide

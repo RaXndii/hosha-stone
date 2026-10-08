@@ -62,6 +62,14 @@
  *   receives it once, on the next start (server/seed.js); a piece the house
  *   later deletes in /admin is not brought back.
  *
+ * inside (optional)
+ *   A piece that opens: Look closer gives its zip a pull, and drawing it
+ *   down shows the inside (Unzip.jsx). { src (the piece laid open, cut
+ *   out like the front), at: [x0, y0, x1, y1] (where that photograph falls
+ *   over the front, in fractions of the front), zip: { x, top, bottom }
+ *   (fractions of the front), spots: [{ id, at (fractions of the open
+ *   photograph), label, note }] }
+ *
  * replaces (optional, with since)
  *   The slug of a piece this one takes the place of. In a database made
  *   before it, that piece is deleted and this one stands where it stood,
@@ -83,6 +91,66 @@ export const STATIC_STORY = {
 }
 
 export const STATIC_PRODUCTS = [
+  {
+    id: 'midnight-007m',
+    since: 4,
+    colour: 'Navy',
+    badge: 'New',
+    number: '007',
+    category: 'jackets',
+    name: 'Midnight Harrington',
+    code: '007M',
+    line: 'Midnight',
+    short: 'Midnight',
+    description: 'A harrington in a light, crinkled shell of midnight navy. A stand collar that closes with a tab and two buttons, a two-way zip, flap pockets with a button each, and a ribbed hem and cuffs. Inside: a zipped pocket, and seams trimmed in chambray.',
+    tagline: 'Essential British kit.',
+    price: 30,
+    hero: { src: '/midnight-hero.webp' },
+    sizes: [
+      { label: 'S', available: true },
+      { label: 'M', available: true },
+      { label: 'L', available: true },
+      { label: 'XL', available: true },
+    ],
+    // midnight: a deep blue-green room, with a sea-glass light to stand against
+    theme: {
+      bg0: [2, 8, 10],
+      bg1: [9, 24, 28],
+      bg2: [36, 72, 80],
+      light: [186, 218, 222],
+      floor: [3, 9, 11],
+      neon: [64, 206, 196],
+      accent: [128, 210, 202],
+      glass: [206, 232, 234],
+      ink: [240, 246, 246],
+      ink2: [146, 166, 168],
+    },
+    gallery: [
+      { id: 'front', label: 'Front view', kind: 'garment', src: '/midnight-hero.webp', angle: 0, turn: '/tt/midnight-front' },
+      { id: 'back', label: 'Back view', kind: 'garment', src: '/midnight-back.webp', angle: 180, turn: '/tt/midnight-back' },
+      { id: 'open', label: 'Inside', kind: 'print', src: '/midnight-open.webp', focus: '50% 40%' },
+      { id: 'collar', label: 'Collar & tab', kind: 'print', src: '/midnight-collar.webp', focus: '40% 35%' },
+      { id: 'zip', label: 'Zip & pocket', kind: 'print', src: '/midnight-zip.webp', focus: '45% 50%' },
+    ],
+    spots: [
+      { id: 'tab', at: [0.53, 0.12], label: 'Collar tab', note: 'The stand collar closes with a tab and two buttons.', photo: 'collar' },
+      { id: 'pocket', at: [0.685, 0.64], label: 'Flap pockets', note: 'Two, each closed with a button.', photo: 'zip' },
+      { id: 'rib', at: [0.3, 0.86], label: 'Ribbed hem & cuffs', note: 'Knit rib at the hem and at both cuffs holds it close.' },
+      { id: 'zip', at: [0.493, 0.92], label: 'Two-way zip', note: 'A pull at each end: open it from the hem as well as the collar.', photo: 'zip' },
+    ],
+    // it opens: the photograph of it laid open, where it falls over the front,
+    // the line of its zip, and what is inside (see Unzip.jsx)
+    inside: {
+      src: '/midnight-inside.webp',
+      at: [-0.0242, -0.0053, 1.0427, 1.0077],
+      zip: { x: 0.493, top: 0.2, bottom: 0.9 },
+      spots: [
+        { id: 'pocket', at: [0.73, 0.36], label: 'Inner zip pocket', note: 'A zipped pocket inside the left front.' },
+        { id: 'chambray', at: [0.27, 0.735], label: 'Chambray trim', note: 'The seams inside are bound in pale blue chambray.' },
+        { id: 'layer', at: [0.43, 0.41], label: 'Inner back', note: 'A second layer across the inside of the back.' },
+      ],
+    },
+  },
   {
     id: 'espresso-006e',
     colour: 'Brown',

@@ -376,6 +376,19 @@ export function detent(ac, out, t, o = {}, kit) {
 }
 
 /**
+ * A zip's teeth: one tooth passing the slider. Played for every few pixels
+ * the pull travels, so a slow pull ticks and a quick one purrs; each tooth
+ * is a hair different in pitch, as metal teeth are.
+ */
+export function zip(ac, out, t, o = {}, kit) {
+  const g = gainNode(ac, o.gain ?? 1.6)
+  g.connect(out)
+  tick(ac, g, t, { freq: rand(2600, 3600), q: 2.2, gain: 0.12 * (o.strength ?? 1), decay: 0.006 }, kit)
+  tick(ac, g, t + 0.002, { freq: rand(900, 1300), q: 1.4, gain: 0.05 * (o.strength ?? 1), decay: 0.01 }, kit)
+  return 0.02
+}
+
+/**
  * Keeping a piece. The heart is pixel art, so its sound comes from the same
  * world: a puff of a pop, a quick square-wave climb up the chord the way an
  * old console says "collected", and a bright bell-like ting over the top whose
@@ -498,7 +511,7 @@ export function thunder(ac, out, t, o = {}, kit) {
   return at - t + dur + 1
 }
 
-export const SOUNDS = { tap, soft, bead, deny, order, sent, portal, close, open, swipe, curtain, detent, heartOn, heartOff, bloom, thunder }
+export const SOUNDS = { tap, soft, bead, deny, order, sent, portal, close, open, swipe, curtain, detent, zip, heartOn, heartOff, bloom, thunder }
 
 /* ------------------------------------------------------------------ the score */
 

@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { clock, details as detailsOf, spotsOf, turnViews } from '../../data/showroom.js'
 import Turntable from './Turntable.jsx'
 import Lens from './Lens.jsx'
+import Unzip from './Unzip.jsx'
 import Plate from '../ui/Plate.jsx'
 import { sound } from '../../lib/sound/index.js'
 
@@ -102,9 +103,14 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
   const nameRef = useRef(null)
   const zoomRef = useRef(null)
   const markersRef = useRef([])
+  const pullMarkRef = useRef(null)
+  const unzipRef = useRef(null)
   const mounted = useRef(false)
   const lastName = useRef('Front')
-  const [view, setView] = useState({ kind: 'piece' }) // or { kind: 'photo', i, spot }
+  const [view, setView] = useState({ kind: 'piece' }) // or { kind: 'photo', i, spot }, or { kind: 'open', grab, auto }
+  const [insideSpot, setInsideSpot] = useState(null) // a detail inside, while the piece lies open
+  const [zipOpen, setZipOpen] = useState(false)
+  const [snap, setSnap] = useState(false) // the turning piece and its photograph trade places at once
   const [spot, setSpot] = useState(null) // a detail being looked at on the piece itself
   const [moved, setMoved] = useState(false)
   const [touch] = useState(() => !fine())
@@ -113,6 +119,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
   const extra = detailsOf(product)
   const spots = spotsOf(product)
   const film = product.film
+  const inside = product.inside
   const canTurn = views.length > 1
   const front = views.find((v) => v.angle === 0) ?? views[0]
   const photo = view.kind === 'photo' ? extra[view.i] : null
@@ -183,8 +190,36 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
   const showPiece = useCallback(() => {
     setView({ kind: 'piece' })
     setSpot(null)
+    setInsideSpot(null)
+    setZipOpen(false)
     ttRef.current?.unzoom()
   }, [])
+
+  /* ---------------------------------------------------- opening the piece */
+  // where its front stands on the stage once it faces the visitor at arm's length
+  const measure = useCallback(() => {
+    const tt = ttRef.current
+    const a = tt?.project(0, 0, false)
+    const b = tt?.project(1, 1, false)
+    return a && b ? { x: a.x, y: a.y, w: b.x - a.x, h: b.y - a.y } : null
+  }, [])
+  /** the zip's pull, taken: the piece comes to face the visitor and its photograph takes its place */
+  const startOpen = useCallback((grab, auto = false) => {
+    ttRef.current?.reset()
+    setSpot(null)
+    setInsideSpot(null)
+    setSnap(true)
+    setView({ kind: 'open', grab, auto })
+  }, [])
+  const onUnzipClosed = useCallback(() => { setSnap(true); setZipOpen(false); setInsideSpot(null); setView({ kind: 'piece' }) }, [])
+  const onUnzipState = useCallback((o) => { setZipOpen(o); if (!o) setInsideSpot(null) }, [])
+  // the turning piece gives way to its photograph at once, and comes back at once: they are the same picture
+  const instant = snap || view.kind === 'open'
+  useEffect(() => {
+    if (!snap) return
+    let id = requestAnimationFrame(() => { id = requestAnimationFrame(() => setSnap(false)) })
+    return () => cancelAnimationFrame(id)
+  }, [snap, view.kind])
   // back on the piece, its readout is new: the next frame names what faces the visitor
   useLayoutEffect(() => { if (view.kind === 'piece') lastName.current = '' }, [view.kind])
 
@@ -221,6 +256,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
       if (e.target instanceof HTMLInputElement) return
       const active = view.kind === 'photo' ? lensRef.current : ttRef.current
       if (e.key === 'Escape') { e.stopPropagation(); close() }
+      else if (view.kind === 'open') return // the open piece's pull takes the keys
       else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
         const d = e.key === 'ArrowRight' ? 1 : -1
         if (view.kind === 'photo') stepPhoto(d)
@@ -263,9 +299,17 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
       el.style.opacity = show ? '1' : '0'
       el.style.pointerEvents = show ? 'auto' : 'none'
     })
+    // the zip's pull, on the piece, while it faces the visitor squarely
+    if (pullMarkRef.current && tt && inside) {
+      const p = tt.project(inside.zip.x, inside.zip.top)
+      const show = !!p && spotRef.current === null && p.facing > 0.9 && zoom < 1.05 && !dragging
+      if (p) pullMarkRef.current.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`
+      pullMarkRef.current.style.opacity = show ? '1' : '0'
+      pullMarkRef.current.style.pointerEvents = show ? 'auto' : 'none'
+    }
     // gone back out from a detail (the zoom is headed home): the detail is let go
     if (spotRef.current !== null && target <= 1.001) setSpot(null)
-  }, [spots])
+  }, [spots, inside])
 
   const onLensZoom = useCallback((z) => {
     if (zoomRef.current) zoomRef.current.textContent = `${Math.round(z * 100)}%`
@@ -277,11 +321,15 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
 
   const hint = view.kind === 'photo'
     ? touch ? (extra.length > 1 ? 'Pinch to go close · Swipe for the next' : 'Pinch or double-tap to go close') : 'Scroll or double-click to go close'
-    : canTurn
-      ? touch ? 'Drag to turn · Pinch to go close' : 'Drag to turn · Scroll to go close'
-      : touch ? 'Pinch or double-tap to go close' : 'Scroll or double-click to go close'
+    : view.kind === 'open'
+      ? zipOpen ? (touch ? 'Tap a mark · Drag the pull up to close it' : 'A mark opens its detail · Drag the pull up to close it') : 'Drag the pull down to open it'
+      : inside
+        ? touch ? 'Drag to turn · Pull the zip down to open it' : 'Drag to turn · Pull the zip down to open it'
+        : canTurn
+          ? touch ? 'Drag to turn · Pinch to go close' : 'Drag to turn · Scroll to go close'
+          : touch ? 'Pinch or double-tap to go close' : 'Scroll or double-click to go close'
 
-  const activeZoom = () => (view.kind === 'photo' ? lensRef.current : ttRef.current)
+  const activeZoom = () => (view.kind === 'photo' ? lensRef.current : view.kind === 'open' ? null : ttRef.current)
 
   return (
     <div
@@ -399,7 +447,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
         {/* the stage */}
         <div ref={frameRef} className="closer-stage relative min-h-0 flex-1 lg:absolute lg:inset-x-[max(19vw,264px)] lg:bottom-[calc(122px+env(safe-area-inset-bottom))] lg:top-[84px]">
           {armed && front && (
-            <div className="absolute inset-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ opacity: photo ? 0 : 1, transform: photo ? 'scale(0.96)' : 'none', pointerEvents: photo ? 'none' : 'auto' }}>
+            <div className="absolute inset-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ opacity: photo || view.kind === 'open' ? 0 : 1, transform: photo ? 'scale(0.96)' : 'none', pointerEvents: photo || view.kind === 'open' ? 'none' : 'auto', transition: instant ? 'none' : undefined }}>
               <Turntable
                 key={product.id}
                 ref={ttRef}
@@ -431,7 +479,45 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
                   </span>
                 </button>
               ))}
+              {/* the zip's pull: take it and the jacket opens */}
+              {inside && (
+                <button
+                  ref={pullMarkRef}
+                  data-sound="none"
+                  onPointerDown={(e) => { if (e.button === 0) { e.preventDefault(); startOpen({ id: e.pointerId, y: e.clientY }) } }}
+                  onClick={(e) => { if (e.detail === 0) startOpen(null, true) }}
+                  aria-label="Open the zip and see inside"
+                  className="spot group/pull absolute left-0 top-0 -ml-[22px] -mt-[22px] grid h-11 w-11 cursor-grab touch-none place-items-center transition-opacity duration-500"
+                  style={{ opacity: 0, pointerEvents: 'none', '--i': spots.length }}
+                >
+                  <span aria-hidden="true" className="spot-ring absolute h-[12px] w-[12px]" style={{ border: '1px solid rgb(var(--sr-neon) / 0.9)' }} />
+                  <span aria-hidden="true" className="relative block h-[22px] w-[13px] transition-transform duration-300 group-hover/pull:scale-110 group-focus-visible/pull:scale-110" style={{ filter: 'drop-shadow(0 0 7px rgb(var(--sr-neon) / 0.85))' }}>
+                    <span className="facet absolute inset-0 block" style={{ '--cut': '4px', background: 'linear-gradient(180deg, rgb(var(--sr-ink)), rgb(var(--sr-glass) / 0.85))' }} />
+                    <span className="absolute left-1/2 top-[6px] block h-[9px] w-[3px] -translate-x-1/2" style={{ background: 'rgb(var(--sr-bg0) / 0.8)' }} />
+                  </span>
+                  <span aria-hidden="true" className="pointer-events-none absolute left-[38px] top-1/2 isolate hidden -translate-y-1/2 items-center gap-2 whitespace-nowrap py-[6px] pl-3 pr-2.5 text-[9px] font-medium uppercase tracking-[0.28em] lg:flex" style={{ color: ink() }}>
+                    <Plate cut={6} fill="rgb(var(--sr-bg0) / 0.82)" edge="rgb(var(--sr-neon) / 0.55)" />
+                    Unzip
+                    <svg viewBox="0 0 10 10" className="h-2 w-2"><path d="M5 1.5v7M2 5.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.1" /></svg>
+                  </span>
+                </button>
+              )}
             </div>
+          )}
+          {/* the piece, opened */}
+          {armed && inside && view.kind === 'open' && (
+            <Unzip
+              key={product.id}
+              ref={unzipRef}
+              front={front.src}
+              inside={inside}
+              measure={measure}
+              grab={view.grab}
+              auto={view.auto}
+              onState={onUnzipState}
+              onClosed={onUnzipClosed}
+              onPick={setInsideSpot}
+            />
           )}
           {/* a close photograph, to go into */}
           {armed && photo && (
@@ -469,7 +555,30 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
         {/* bottom: what is being looked at, and how */}
         <div className="pointer-events-none relative z-[3] flex min-h-[56px] shrink-0 items-center justify-center px-5 lg:absolute lg:inset-x-[max(19vw,264px)] lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] lg:min-h-[52px] lg:px-0">
           <div data-cl-chrome className="flex max-w-full items-center gap-4">
-            {spotNow ? (
+            {view.kind === 'open' ? (
+              insideSpot ? (
+                <div className="pointer-events-auto flex min-w-0 items-center gap-4">
+                  <span aria-hidden="true" className="block h-[6.5px] w-[6.5px] shrink-0 rotate-45" style={{ background: 'rgb(var(--sr-neon))', boxShadow: '0 0 10px rgb(var(--sr-neon))' }} />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.32em]" style={{ color: ink(0.92) }}>{insideSpot.label}</p>
+                    {insideSpot.note && <p className="mt-1 text-[11px] leading-[1.5] lg:text-[11.5px]" style={{ color: ink(0.6) }}>{insideSpot.note}</p>}
+                  </div>
+                  <button data-sound="none" onClick={() => setInsideSpot(null)} className="ml-1 shrink-0 text-[9.5px] uppercase tracking-[0.28em] underline decoration-[rgb(var(--sr-ink)/0.3)] underline-offset-[5px]" style={{ color: ink(0.7) }}>
+                    Back
+                  </button>
+                </div>
+              ) : (
+                <div className="pointer-events-auto flex min-w-0 items-center gap-5">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.32em]" style={{ color: ink(0.9) }}>{zipOpen ? 'Inside' : 'Opening'}</p>
+                    <p className="mt-1.5 text-[9px] uppercase tracking-[0.3em]" style={{ color: ink(0.42) }}>{hint}</p>
+                  </div>
+                  <button data-sound="none" onClick={() => unzipRef.current?.[zipOpen ? 'close' : 'open']()} className="shrink-0 text-[9.5px] uppercase tracking-[0.28em] underline decoration-[rgb(var(--sr-ink)/0.3)] underline-offset-[5px]" style={{ color: ink(0.75) }}>
+                    {zipOpen ? 'Close it' : 'Open it'}
+                  </button>
+                </div>
+              )
+            ) : spotNow ? (
               <div className="pointer-events-auto flex min-w-0 items-center gap-4">
                 <span aria-hidden="true" className="block h-[6.5px] w-[6.5px] shrink-0 rotate-45" style={{ background: 'rgb(var(--sr-neon))', boxShadow: '0 0 10px rgb(var(--sr-neon))' }} />
                 <div className="min-w-0">

@@ -69,6 +69,7 @@ function insertPiece(p, { position, featured }) {
     const r = img.run(id, garment ? VIEW_OF[g.angle ?? 0] ?? 'front' : 'detail', g.label ?? '', src, abs(g.turn) ?? null, src, g.focus ?? null, k, k === 0 ? 1 : 0)
     imageId[g.id] = Number(r.lastInsertRowid)
   })
+  if (p.inside) db.prepare('UPDATE products SET inside = ? WHERE id = ?').run(JSON.stringify({ ...p.inside, src: abs(p.inside.src) }), id)
   if (p.spots?.length) {
     const spots = p.spots.map(({ at, label, note, photo }) => ({ at, label, note: note ?? '', photo: photo ? imageId[photo] ?? null : null }))
     db.prepare('UPDATE products SET spots = ? WHERE id = ?').run(JSON.stringify(spots), id)

@@ -24,6 +24,23 @@ export function filmOf(row) {
 }
 
 /**
+ * The inside of a piece that opens: its photograph laid where it falls over
+ * the front, the line of the zip, and the details marked inside. Anything
+ * malformed and the piece simply does not open.
+ */
+export function insideOf(row) {
+  const i = parse(row.inside)
+  const num = (v) => Number.isFinite(v)
+  const unit = (v) => num(v) && v >= 0 && v <= 1
+  if (!i?.src || !Array.isArray(i.at) || i.at.length !== 4 || !i.at.every(num)) return undefined
+  if (!i.zip || !unit(i.zip.x) || !unit(i.zip.top) || !unit(i.zip.bottom) || i.zip.bottom <= i.zip.top) return undefined
+  const spots = (Array.isArray(i.spots) ? i.spots : [])
+    .filter((s) => Array.isArray(s?.at) && s.at.length === 2 && s.at.every(unit) && s.label)
+    .map((s, k) => ({ id: `inside-${k}`, at: s.at, label: s.label, note: s.note || '' }))
+  return { src: i.src, at: i.at, zip: { x: i.zip.x, top: i.zip.top, bottom: i.zip.bottom }, spots }
+}
+
+/**
  * The details marked on the front view. A spot that opened a photograph the
  * house has since removed still marks its detail; it takes the visitor in
  * close on the piece instead.
@@ -79,6 +96,7 @@ export function publicProduct(row) {
     hero: { src: hero?.src ?? images[0]?.src ?? '' },
     film: filmOf(row),
     spots: spotsOf(row, images),
+    inside: insideOf(row),
     gallery: images.map((i) => {
       const v = VIEWS[i.view] ?? VIEWS.front
       const angleFree = v.kind === 'garment' && i.turn && !seenAngle.has(v.angle)
@@ -147,6 +165,7 @@ export function adminProduct(row) {
     sizes: sizesOf(row.id).map((s) => ({ label: s.label, available: !!s.available })),
     images: images.map((i) => ({ id: i.id, view: i.view, label: i.label, src: i.src, thumb: i.thumb ?? i.src, turn: i.turn, primary: !!i.is_primary, width: i.width, height: i.height })),
     film: parse(row.film),
+    inside: parse(row.inside),
     spots: (parse(row.spots) ?? []).map((sp) => ({ at: sp.at, label: sp.label, note: sp.note || '', photo: images.some((i) => i.id === sp.photo) ? sp.photo : null })),
     theme: themeFor(row, images),
   }
