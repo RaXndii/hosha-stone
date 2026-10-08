@@ -7,6 +7,9 @@ import { resolve } from 'node:path'
 export default defineConfig({
   plugins: [react()],
   build: {
+    // the map from each page's source to its built files: the server reads it
+    // to have a page's own script fetched alongside the page (server/index.js)
+    manifest: true,
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),

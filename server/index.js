@@ -22,6 +22,32 @@ const PORT = Number(process.env.PORT) || 8787
 const DIST = join(ROOT, 'dist')
 const app = express()
 
+/**
+ * The build's scripts and stylesheets as they were compressed at build time
+ * (scripts/compress.mjs) — Brotli at its strongest, or gzip — sent as they
+ * are, so nothing is compressed again per visitor. Anything without a
+ * compressed copy falls through to the ordinary static files.
+ */
+const TYPES = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json' }
+function precompressed(dir, cacheControl) {
+  const known = new Map()
+  const has = (file) => {
+    if (!known.has(file)) known.set(file, existsSync(file))
+    return known.get(file)
+  }
+  return (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+    const m = req.path.match(/^\/([\w.-]+)(\.js|\.css|\.svg|\.json|\.webmanifest)$/)
+    if (!m || m[1].includes('..')) return next()
+    const accept = req.get('accept-encoding') || ''
+    const [encoding, ext] = /\bbr\b/.test(accept) ? ['br', '.br'] : /\bgzip\b/.test(accept) ? ['gzip', '.gz'] : []
+    const file = encoding && join(dir, `${m[1]}${m[2]}${ext}`)
+    if (!file || !has(file)) return next()
+    res.set({ 'Content-Type': TYPES[m[2]], 'Content-Encoding': encoding, Vary: 'Accept-Encoding', 'Cache-Control': cacheControl })
+    res.sendFile(file, (err) => { if (err && !res.headersSent) next() })
+  }
+}
+
 app.disable('x-powered-by')
 // behind a proxy (Render, Railway, nginx) req.ip and req.secure come from it
 if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : process.env.TRUST_PROXY)
@@ -72,10 +98,23 @@ app.get('/sitemap.xml', (req, res) => {
 })
 
 if (existsSync(DIST)) {
+  app.use('/assets', precompressed(join(DIST, 'assets'), 'public, max-age=31536000, immutable'))
   app.use('/assets', express.static(join(DIST, 'assets'), { immutable: true, maxAge: '365d' }))
   // a font file is never changed under the same name (src/fonts.css)
   app.use('/fonts', express.static(join(DIST, 'fonts'), { immutable: true, maxAge: '365d' }))
-  app.use(express.static(DIST, { index: false, maxAge: '1h' }))
+  app.use(precompressed(DIST, 'public, max-age=3600'))
+  app.use(express.static(DIST, {
+    index: false,
+    maxAge: '1h',
+    setHeaders(res, path) {
+      // a photograph or film can be replaced under its own name, so it is asked
+      // after again within the hour — but the copy a phone already has is
+      // shown at once meanwhile, and while it asks
+      if (/\.(webp|avif|jpe?g|png|mp4|webm)$/.test(path)) res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=2592000')
+      // the service worker is always checked for a newer one (src/sw.js)
+      if (/[\\/]sw\.js$/.test(path)) res.set('Cache-Control', 'no-cache')
+    },
+  }))
   app.get(/^\/admin(\/.*)?$/, (_req, res) => res.sendFile(join(DIST, 'admin', 'index.html')))
 
   // every page is the same file; only the tags in its head differ, and those
@@ -83,12 +122,29 @@ if (existsSync(DIST)) {
   const SHELL = join(DIST, 'index.html')
   const META = /<!--hs:meta-->[\s\S]*?<!--\/hs:meta-->/
   const OPENING = /<!--hs:opening-->[\s\S]*?<!--\/hs:opening-->/
+  // a page that is its own script (the archive, the story) has it fetched with
+  // the page itself rather than once the main script has asked for it — on a
+  // phone, one round trip less before it can draw (vite.config.js: manifest)
+  const PAGES = { browse: 'src/components/browse/Browse.jsx', saved: 'src/components/browse/Browse.jsx', story: 'src/components/story/Story.jsx' }
+  let manifest = null
+  try { manifest = JSON.parse(readFileSync(join(DIST, '.vite', 'manifest.json'), 'utf8')) } catch { /* built without one: no hints */ }
+  const preloads = (path) => {
+    const key = PAGES[path.replace(/^\/+|\/+$/g, '')]
+    const entry = key && manifest?.[key]
+    if (!entry) return ''
+    // (what the page already loads for every page is left to it)
+    return [entry.file, ...(entry.imports ?? []).map((k) => manifest[k]?.file)]
+      .filter((f) => f && !shell.includes(f))
+      .map((f) => `<link rel="modulepreload" crossorigin href="/${f}" />`)
+      .concat((entry.css ?? []).filter((f) => !shell.includes(f)).map((f) => `<link rel="stylesheet" crossorigin href="/${f}" />`))
+      .join('\n    ')
+  }
   let shell = null
   app.get(/^\/(?!api\/|media\/|share\/).*/, (req, res) => {
     try {
       shell ??= readFileSync(SHELL, 'utf8')
       // (as functions, so a "$" in a name or a motto is never read as a replacement pattern)
-      res.type('html').send(shell.replace(META, () => `${metaFor(req)}\n    ${catalogueFor()}`).replace(OPENING, () => openingFor()))
+      res.type('html').send(shell.replace(META, () => `${metaFor(req)}\n    ${preloads(req.path)}\n    ${catalogueFor()}`).replace(OPENING, () => openingFor()))
     } catch {
       res.sendFile(SHELL)
     }

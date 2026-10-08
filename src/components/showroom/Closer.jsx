@@ -428,7 +428,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
               </>
             )}
             <p className="mb-1 hidden text-[9px] uppercase tracking-[0.34em] lg:block" style={{ color: ink(0.42) }}>Close up</p>
-            {[{ id: 'whole', label: canTurn ? 'The piece' : 'Front', src: front?.src, garment: true }, ...extra].map((d, i) => {
+            {[{ id: 'whole', label: canTurn ? 'The piece' : 'Front', src: front?.src, thumb: front?.thumb, garment: true }, ...extra].map((d, i) => {
               const idx = i - 1
               const on = idx === -1 ? view.kind === 'piece' : view.kind === 'photo' && view.i === idx
               return (
@@ -446,7 +446,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
                     style={{ opacity: on ? 1 : 0.55, filter: on ? 'drop-shadow(0 0 8px rgb(var(--sr-neon) / 0.45))' : 'none' }}
                   >
                     <span className="facet absolute inset-0 overflow-hidden" style={{ '--cut': '10px', background: 'rgb(var(--sr-bg1))' }}>
-                      <img src={d.src} alt="" draggable="false" loading="lazy" className={`absolute inset-0 h-full w-full ${d.garment ? 'object-contain p-1.5' : 'object-cover'}`} style={d.focus ? { objectPosition: d.focus } : undefined} />
+                      <img src={d.thumb || d.src} alt="" draggable="false" loading="lazy" className={`absolute inset-0 h-full w-full ${d.garment ? 'object-contain p-1.5' : 'object-cover'}`} style={d.focus ? { objectPosition: d.focus } : undefined} />
                     </span>
                     <Plate cut={10} className="z-[1]" edge={on ? 'rgb(var(--sr-neon) / 0.95)' : ink(0.2)} edgeHi={on ? undefined : ink(0.5)} />
                   </span>

@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/thumbs.mjs && vite build && node scripts/compress.mjs",
     "lint": "oxlint",
     "preview": "vite preview",
     "server": "node server/index.js",
     "start": "node server/index.js",
-    "card": "node scripts/share-card.mjs"
+    "card": "node scripts/share-card.mjs",
+    "thumbs": "node scripts/thumbs.mjs"
   },
   "dependencies": {
     "compression": "^1.8.2",

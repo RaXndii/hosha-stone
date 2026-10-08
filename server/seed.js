@@ -32,6 +32,8 @@ export const DEFAULT_SIZE_GUIDE = { unit: 'cm', note: '', tables: [] }
 
 // bundled assets are referenced from the site root once a server serves them
 const abs = (p) => (p ? p.replace(/^\.\//, '/') : p)
+// a photograph the site ships with has a small copy in public/thumb (scripts/thumbs.mjs)
+const thumbOf = (src) => (/^\/[\w.-]+\.webp$/.test(src ?? '') ? `/thumb${src}` : src)
 const VIEW_OF = { 0: 'front', 45: 'three-quarter-right', 90: 'right', 135: 'three-quarter-back-right', 180: 'back', 225: 'three-quarter-back-left', 270: 'left', 315: 'three-quarter-left' }
 
 /** The newest revision of the bundled catalogue: each piece says which it arrived in (`since`). */
@@ -66,7 +68,7 @@ function insertPiece(p, { position, featured }) {
     const garment = g.kind === 'garment'
     // the stage photograph of the front is the dedicated hero cut-out
     const src = garment && g.angle === 0 && p.hero?.src ? abs(p.hero.src) : abs(g.src)
-    const r = img.run(id, garment ? VIEW_OF[g.angle ?? 0] ?? 'front' : 'detail', g.label ?? '', src, abs(g.turn) ?? null, src, g.focus ?? null, k, k === 0 ? 1 : 0)
+    const r = img.run(id, garment ? VIEW_OF[g.angle ?? 0] ?? 'front' : 'detail', g.label ?? '', src, abs(g.turn) ?? null, thumbOf(src), g.focus ?? null, k, k === 0 ? 1 : 0)
     imageId[g.id] = Number(r.lastInsertRowid)
   })
   if (p.stage) db.prepare('UPDATE products SET stage = ? WHERE id = ?').run(p.stage, id)

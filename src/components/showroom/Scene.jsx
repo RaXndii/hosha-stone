@@ -175,13 +175,15 @@ export const SceneBack = memo(function SceneBack() {
           }}
         />
       ))}
-      {/* the room's light, drifting on its own and reaching for the visitor's pointer (usePointerField) */}
+      {/* the room's light, drifting on its own and reaching for the visitor's
+          pointer (usePointerField): a glow 0.64 of the stage across, moved by
+          its own size — no bigger than the light it carries */}
       <div
         data-field="light"
-        className="absolute left-[-50%] top-[-50%] h-[200%] w-[200%] will-change-transform"
+        className="absolute left-[18%] top-[18%] h-[64%] w-[64%] will-change-transform"
         style={{
-          transform: 'translate3d(0, -4%, 0)',
-          background: `radial-gradient(16% 16% at 50% 50%, ${c('light', 0.08)} 0%, transparent 100%)`,
+          transform: 'translate3d(0, -12.5%, 0)',
+          background: `radial-gradient(closest-side, ${c('light', 0.08)} 0%, transparent 100%)`,
         }}
       />
 
@@ -257,7 +259,7 @@ export const SceneFront = memo(function SceneFront() {
           opacity: 0.7,
         }}
       />
-      <div className="absolute -inset-[12%] opacity-[0.045]" style={{ backgroundImage: GRAIN, animation: 'grain-shift 8s steps(5) infinite' }} />
+      <div className="grain absolute -inset-[12%] opacity-[0.045]" style={{ backgroundImage: GRAIN }} />
       {/* phone: the set ends with the first screen, so it fades into the page below */}
       <div className="absolute inset-x-0 bottom-0 h-[16%] lg:hidden" style={{ background: `linear-gradient(to bottom, transparent, ${c('bg0')})` }} />
     </div>

@@ -7,7 +7,21 @@
  */
 import { STATIC_CATEGORIES, STATIC_PRODUCTS, STATIC_STORY } from './static-catalogue.js'
 
-export let PRODUCTS = STATIC_PRODUCTS
+/*
+ * Every photograph has a small copy for where it is drawn small (a card, a
+ * strip, a search line): uploads have their own, and the house's bundled ones
+ * live in /thumb under the same name (scripts/thumbs.mjs). Filled in here for
+ * any piece that does not say.
+ */
+const thumbOf = (src) => (/^\/[\w.-]+\.webp$/.test(src ?? '') ? `/thumb${src}` : src)
+const withThumbs = (list) =>
+  list.map((p) => ({
+    ...p,
+    hero: { ...p.hero, thumb: p.hero?.thumb || thumbOf(p.hero?.src) },
+    gallery: (p.gallery ?? []).map((g) => ({ ...g, thumb: g.thumb || thumbOf(g.src) })),
+  }))
+
+export let PRODUCTS = withThumbs(STATIC_PRODUCTS)
 export let CATEGORIES = STATIC_CATEGORIES
 export let STORY = STATIC_STORY
 export let ABOUT = {
@@ -21,7 +35,7 @@ export let ABOUT = {
 export let SOURCE = 'static'
 
 export function setCatalogue({ products, categories, about, source = 'server' }) {
-  if (Array.isArray(products)) PRODUCTS = products
+  if (Array.isArray(products)) PRODUCTS = withThumbs(products)
   if (Array.isArray(categories)) CATEGORIES = [{ id: 'all', label: 'All' }, ...categories.filter((c) => c.id !== 'all')]
   if (about) ABOUT = { ...ABOUT, ...about }
   SOURCE = source

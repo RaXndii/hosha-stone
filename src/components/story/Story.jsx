@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
-import ScrollTrigger from 'gsap/ScrollTrigger'
 import { ABOUT, PRODUCTS, STORY, pad2, themeVars } from '../../data/showroom.js'
 import { INSTAGRAM, WHATSAPP } from '../../data/order.js'
 import { usePage } from '../../lib/page.jsx'
@@ -10,6 +9,7 @@ import useSpotlight from '../../hooks/useSpotlight.js'
 import Header from '../showroom/Header.jsx'
 import { MobileMenu, SearchSheet } from '../showroom/Overlays.jsx'
 import { sound } from '../../lib/sound/index.js'
+import { reveal, scrub } from '../../lib/scroll.js'
 
 /**
  * The house, at length.
@@ -25,26 +25,6 @@ import { sound } from '../../lib/sound/index.js'
  * each one lights its own band of the page in its own colours — the same rule
  * the showroom follows, read downward instead of across.
  */
-/*
- * ScrollTrigger, once registered, watches the page for good — a frame loop
- * and a timer that never stop — and this script is fetched ahead of time,
- * while the showroom is idle. Registered at the top of this file, it kept
- * every page of the site awake, sixty frames a second, for a page the visitor
- * was not on. So it starts when the story opens, and sleeps when they leave.
- */
-let registered = false
-function Awake() {
-  // a child's layout effects run before its parent's, and before those of the
-  // siblings after it: first in the page, this one runs before any band sets
-  // up its trigger
-  useLayoutEffect(() => {
-    if (!registered) { gsap.registerPlugin(ScrollTrigger); registered = true }
-    else ScrollTrigger.enable()
-    return () => ScrollTrigger.disable()
-  }, [])
-  return null
-}
-
 const ARCHIVE = {
   bg0: [4, 3, 8],
   bg1: [11, 9, 18],
@@ -87,33 +67,29 @@ function Band({ product, index, onEnter }) {
   useLayoutEffect(() => {
     const root = ref.current
     if (reduced()) return
+    const q = gsap.utils.selector(root)
+    const piece = q('[data-band-piece]')[0]
     const ctx = gsap.context(() => {
-      const q = gsap.utils.selector(root)
-      gsap.fromTo(
-        q('[data-band-piece]'),
-        { yPercent: 12 },
-        {
-          yPercent: -12,
-          ease: 'none',
-          scrollTrigger: { trigger: root, start: 'top bottom', end: 'bottom top', scrub: 0.6 },
-        },
-      )
-      gsap.from(q('[data-band-in]'), {
-        opacity: 0,
-        y: 26,
-        duration: 1.1,
-        ease: 'power3.out',
-        stagger: 0.08,
-        scrollTrigger: { trigger: root, start: 'top 72%', once: true },
-      })
-      gsap.from(q('[data-band-rule]'), {
-        scaleX: 0,
-        duration: 1.3,
-        ease: 'power3.inOut',
-        scrollTrigger: { trigger: root, start: 'top 72%', once: true },
-      })
+      gsap.set(q('[data-band-in]'), { opacity: 0, y: 26 })
+      gsap.set(q('[data-band-rule]'), { scaleX: 0 })
     }, root)
-    return () => ctx.revert()
+    const stops = [
+      // across the screen, the garment goes from a little low to a little high
+      scrub(root, {
+        progress: (r) => Math.min(1, Math.max(0, (window.innerHeight - r.top) / (window.innerHeight + r.height))),
+        draw: (p) => { piece.style.transform = `translate3d(0, ${(12 - 24 * p).toFixed(2)}%, 0)` },
+        smooth: 0.6,
+      }),
+      reveal(root, 0.72, () => ctx.add(() => {
+        gsap.to(q('[data-band-in]'), { opacity: 1, y: 0, duration: 1.1, ease: 'power3.out', stagger: 0.08 })
+        gsap.to(q('[data-band-rule]'), { scaleX: 1, duration: 1.3, ease: 'power3.inOut' })
+      })),
+    ]
+    return () => {
+      stops.forEach((stop) => stop())
+      ctx.revert()
+      piece.style.transform = ''
+    }
   }, [])
 
   return (
@@ -206,6 +182,7 @@ export default function Story() {
   /* ---------------------------------------------- arrival, and the reading */
   useLayoutEffect(() => {
     const root = rootRef.current
+    const stops = []
     const ctx = gsap.context(() => {
       const q = gsap.utils.selector(root)
       if (reduced()) {
@@ -221,30 +198,28 @@ export default function Story() {
       q('[data-section]').forEach((section) => {
         const lines = section.querySelectorAll('[data-rise]')
         if (lines.length) {
-          gsap.fromTo(
-            lines,
-            { yPercent: 112 },
-            { yPercent: 0, duration: 1.1, ease: 'power3.out', stagger: 0.07, scrollTrigger: { trigger: section, start: 'top 76%', once: true } },
-          )
+          gsap.set(lines, { yPercent: 112 })
+          stops.push(reveal(section, 0.76, () => ctx.add(() => gsap.to(lines, { yPercent: 0, duration: 1.1, ease: 'power3.out', stagger: 0.07 }))))
         }
         const fades = section.querySelectorAll('[data-fade-in]')
         if (fades.length) {
-          gsap.fromTo(
-            fades,
-            { opacity: 0, y: 22 },
-            { opacity: 1, y: 0, duration: 1.1, ease: 'power3.out', stagger: 0.09, scrollTrigger: { trigger: section, start: 'top 74%', once: true } },
-          )
+          gsap.set(fades, { opacity: 0, y: 22 })
+          stops.push(reveal(section, 0.74, () => ctx.add(() => gsap.to(fades, { opacity: 1, y: 0, duration: 1.1, ease: 'power3.out', stagger: 0.09 }))))
         }
       })
-
-      // how far through the house you are
-      gsap.to(barRef.current, {
-        scaleX: 1,
-        ease: 'none',
-        scrollTrigger: { trigger: root, start: 'top top', end: 'bottom bottom', scrub: 0.3 },
-      })
     }, root)
-    return () => ctx.revert()
+
+    // how far through the house you are
+    const bar = barRef.current
+    stops.push(scrub(root, {
+      progress: (r) => Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - window.innerHeight))),
+      draw: (p) => { bar.style.transform = `scaleX(${p.toFixed(4)})` },
+      smooth: reduced() ? 0 : 0.3,
+    }))
+    return () => {
+      stops.forEach((stop) => stop())
+      ctx.revert()
+    }
   }, [])
 
   const sections = (ABOUT.sections ?? []).filter((s) => s.heading || s.text)
@@ -255,12 +230,11 @@ export default function Story() {
       className="relative min-h-[100svh] overflow-x-hidden"
       style={{ ...vars, background: 'rgb(var(--sr-bg0))', color: 'rgb(var(--sr-ink))' }}
     >
-      <Awake />
       {/* the obsidian room */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(90% 60% at 50% -6%, rgb(var(--sr-bg2) / 0.5), transparent 62%), linear-gradient(to bottom, rgb(var(--sr-bg1)), rgb(var(--sr-bg0)) 58%, rgb(var(--sr-floor)))' }} />
         <div className="absolute left-[54%] top-[-8%] h-[70%] w-[16%] -translate-x-1/2" style={{ background: 'radial-gradient(50% 100% at 50% 0%, rgb(var(--sr-neon) / 0.11), transparent 82%)', animation: 'neon-breathe 9s ease-in-out infinite' }} />
-        <div className="absolute -inset-[12%] opacity-[0.045]" style={{ backgroundImage: GRAIN, animation: 'grain-shift 8s steps(5) infinite' }} />
+        <div className="grain absolute -inset-[12%] opacity-[0.045]" style={{ backgroundImage: GRAIN }} />
       </div>
 
       {/* how far through you are */}

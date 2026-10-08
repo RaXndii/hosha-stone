@@ -11,9 +11,8 @@ import { frugal } from './lib/net.js'
  * the story is the house at length.
  *
  * Only the showroom is in the script a visitor waits for. The archive and the
- * story are fetched separately (the story alone needs ScrollTrigger, a fifth
- * of the whole script), and both are quietly warmed once the first page has
- * settled, so arriving at either still costs nothing.
+ * story are fetched separately, and both are quietly warmed once the first
+ * page has settled, so arriving at either still costs nothing.
  */
 const loadBrowse = () => import('./components/browse/Browse.jsx')
 const loadStory = () => import('./components/story/Story.jsx')

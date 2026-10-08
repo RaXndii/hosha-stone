@@ -13,11 +13,12 @@ const PERIOD = (LOOP / RATE) * 1000 // ms, about three and a half minutes
 const pathAt = (phase) => ({ x: 0.5 + Math.sin(phase) * 0.26, y: 0.46 + Math.cos(phase * 0.6) * 0.1 })
 
 /*
- * What the light moves. Its glow is twice the stage's size, so a quarter of
- * its own width is half the stage's; the reflection in the glass slides the
- * other way, a tenth of its width from one edge of the stage to the other.
+ * What the light moves. Its glow is 0.64 of the stage across and centred on
+ * it, so to stand over a point x of the stage it moves (x − ½)/0.64 of its own
+ * width; the reflection in the glass slides the other way, a tenth of its
+ * width from one edge of the stage to the other.
  */
-const glow = (x, y) => `translate3d(${((x - 0.5) * 50).toFixed(3)}%, ${((y - 0.5) * 50).toFixed(3)}%, 0)`
+const glow = (x, y) => `translate3d(${(((x - 0.5) / 0.64) * 100).toFixed(3)}%, ${(((y - 0.5) / 0.64) * 100).toFixed(3)}%, 0)`
 const glint = (x) => `translate3d(${((x * 2 - 1) * -10).toFixed(3)}%, 0, 0)`
 const STEPS = 240
 const frames = (draw) => Array.from({ length: STEPS + 1 }, (_, i) => ({ transform: draw(pathAt((i / STEPS) * LOOP)) }))

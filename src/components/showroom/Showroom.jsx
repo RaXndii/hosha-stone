@@ -142,6 +142,11 @@ export default function Showroom({ initialId, entry }) {
   const sheetFrom = useRef(null)
   // the room is lit: until then the bar would sit over the house's entrance
   const [lit, setLit] = useState(false)
+  // the panels that open from the page (search, the menu, the size guide, the
+  // phone's size sheet) are built a moment after the room is lit, in time the
+  // phone has spare — not with the first screen, which they are no part of —
+  // or at once, if a hand gets to one first
+  const [panels, setPanels] = useState(false)
   // whether the closer look and the order request have been asked for yet (see loadCloser)
   const [closerUsed, setCloserUsed] = useState(false)
   const [orderUsed, setOrderUsed] = useState(false)
@@ -279,6 +284,14 @@ export default function Showroom({ initialId, entry }) {
     }, 1200)
     return () => window.clearTimeout(t)
   }, [next, prev])
+
+  useEffect(() => {
+    if (!lit) return
+    const idle = window.requestIdleCallback ?? ((fn) => window.setTimeout(fn, 300))
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout
+    const id = idle(() => setPanels(true), { timeout: 1500 })
+    return () => cancel(id)
+  }, [lit])
 
   // the room is up: what the next tap may open is fetched now, quietly
   useEffect(() => {
@@ -647,7 +660,7 @@ export default function Showroom({ initialId, entry }) {
         <Purchase product={product} size={size} onSize={setSize} onOrder={order} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
       </div>
 
-      <SearchSheet
+      {(panels || overlay === 'search') && <SearchSheet
         open={overlay === 'search'}
         onClose={() => setOverlay(null)}
         onPick={(id) => {
@@ -658,7 +671,7 @@ export default function Showroom({ initialId, entry }) {
           requestProduct(id, to >= from ? 1 : -1)
         }}
         onCategory={pickCategory}
-      />
+      />}
       {closerUsed && (
         <Suspense fallback={null}>
           <Closer
@@ -698,7 +711,7 @@ export default function Showroom({ initialId, entry }) {
           </span>
         </div>
       </div>
-      <MobileMenu open={overlay === 'menu'} onClose={() => setOverlay(null)} onNav={onNav} category={category} onCategory={pickCategory} />
+      {(panels || overlay === 'menu') && <MobileMenu open={overlay === 'menu'} onClose={() => setOverlay(null)} onNav={onNav} category={category} onCategory={pickCategory} />}
 
       {orderUsed && (
         <Suspense fallback={null}>
@@ -706,7 +719,7 @@ export default function Showroom({ initialId, entry }) {
         </Suspense>
       )}
       <Film key={product.id} ref={filmRef} film={product.film} title={product.name} />
-      <SizeGuide open={guide} product={product} onClose={() => setGuide(false)} />
+      {(panels || guide) && <SizeGuide open={guide} product={product} onClose={() => setGuide(false)} />}
 
       {/* phone: buying along the bottom edge, where a thumb rests */}
       <BuyBar
@@ -722,7 +735,7 @@ export default function Showroom({ initialId, entry }) {
         lit={lit}
         hidden={closer || ordering || guide || sizeSheet || !!overlay}
       />
-      <SizeSheet
+      {(panels || sizeSheet) && <SizeSheet
         open={sizeSheet}
         product={product}
         size={size}
@@ -731,7 +744,7 @@ export default function Showroom({ initialId, entry }) {
         onOrder={() => { setSizeSheet(false); order() }}
         onSizeGuide={() => { setSizeSheet(false); setGuide(true) }}
         returnFocusRef={sheetFrom}
-      />
+      />}
     </div>
   )
 }

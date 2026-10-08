@@ -158,6 +158,13 @@ const MIGRATIONS = [
   `
   ALTER TABLE orders ADD COLUMN coords TEXT;
   `,
+  // the house's own photographs have small copies now (public/thumb, npm run
+  // thumbs), as uploads always had: a card, a strip, a search line are drawn
+  // from those instead of the whole photograph
+  `
+  UPDATE product_images SET thumb = '/thumb' || src
+   WHERE (thumb IS NULL OR thumb = src) AND src GLOB '/*.webp' AND instr(substr(src, 2), '/') = 0;
+  `,
 ]
 
 const { user_version: version } = db.prepare('PRAGMA user_version').get()

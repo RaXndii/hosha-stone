@@ -93,7 +93,7 @@ export function publicProduct(row) {
     kept: db.prepare('SELECT COUNT(*) AS n FROM hearts WHERE product_id = ?').get(row.id).n,
     sizes,
     theme: themeFor(row, images),
-    hero: { src: hero?.src ?? images[0]?.src ?? '' },
+    hero: { src: hero?.src ?? images[0]?.src ?? '', thumb: hero?.thumb ?? hero?.src ?? images[0]?.thumb ?? images[0]?.src ?? '' },
     film: filmOf(row),
     spots: spotsOf(row, images),
     inside: insideOf(row),

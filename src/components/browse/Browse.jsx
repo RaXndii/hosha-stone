@@ -189,9 +189,11 @@ function Filters({ filters, setFilter }) {
 /* ------------------------------------------------------------------ a piece */
 
 function Card({ product, saved, kept = 0, onSave, onSelect }) {
+  // drawn small, so from the photograph's small copy (the full one is for its room)
+  const picture = product.hero.thumb || product.hero.src
   const mask = {
-    WebkitMaskImage: `url(${product.hero.src})`,
-    maskImage: `url(${product.hero.src})`,
+    WebkitMaskImage: `url(${picture})`,
+    maskImage: `url(${picture})`,
     WebkitMaskSize: 'contain',
     maskSize: 'contain',
     WebkitMaskPosition: 'center bottom',
@@ -267,7 +269,7 @@ function Card({ product, saved, kept = 0, onSave, onSelect }) {
           <div className="absolute inset-x-[12%] bottom-[12.5%] top-[4%] transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/card:-translate-y-[1.5%] group-hover/card:scale-[1.045]">
             <img
               data-card-img
-              src={product.hero.src}
+              src={picture}
               alt={product.name}
               loading="lazy"
               decoding="async"
@@ -470,7 +472,16 @@ export default function Browse({ kept = false }) {
     const enter = () => go('piece', { id: product.id, entry: 'browse', cut: true })
     if (reduced) { enter(); return }
 
-    flyImg.src = product.hero.src
+    // the piece flies up from its card's small copy (already here) and is
+    // swapped for the whole photograph as soon as that has arrived, which on
+    // the way up is almost at once; the room then opens on it, already loaded
+    flyImg.src = product.hero.thumb || product.hero.src
+    if (product.hero.thumb && product.hero.thumb !== product.hero.src) {
+      const whole = new Image()
+      whole.decoding = 'async'
+      whole.onload = () => { if (leaving.current) flyImg.src = product.hero.src }
+      whole.src = product.hero.src
+    }
     fly.style.setProperty('--fly-neon', product.theme.neon.join(' '))
     veil.style.background = `rgb(${product.theme.bg0.join(' ')})`
     gsap.set(fly, { left: from.left, top: from.top, width: from.width, height: from.height, visibility: 'visible' })
@@ -539,7 +550,7 @@ export default function Browse({ kept = false }) {
         <div className="absolute inset-x-0 bottom-0 h-[30%]" style={{ background: 'radial-gradient(60% 70% at 52% 100%, rgb(var(--sr-neon) / 0.07), transparent 70%)' }} />
         <div className="absolute inset-0 opacity-[0.35]" style={{ background: 'linear-gradient(118deg, transparent 46%, rgb(var(--sr-glass) / 0.025) 48%, transparent 52%), linear-gradient(64deg, transparent 70%, rgb(var(--sr-glass) / 0.02) 71%, transparent 74%)' }} />
         <div className="absolute left-[-10%] top-[55%] h-[40%] w-[70%] will-change-transform" style={{ background: 'radial-gradient(closest-side, rgb(var(--sr-light) / 0.035), transparent)', animation: 'fog-drift 38s ease-in-out infinite' }} />
-        <div className="absolute -inset-[12%] opacity-[0.045]" style={{ backgroundImage: GRAIN, animation: 'grain-shift 8s steps(5) infinite' }} />
+        <div className="grain absolute -inset-[12%] opacity-[0.045]" style={{ backgroundImage: GRAIN }} />
       </div>
       <Lightning rootRef={rootRef} />
 

@@ -71,7 +71,7 @@ function Field({ id, label, value, onChange, placeholder, error, autoComplete })
           placeholder={placeholder}
           autoComplete={autoComplete}
           aria-invalid={!!error}
-          className="w-full bg-transparent pb-2.5 pt-1 text-[14px] tracking-[0.02em] outline-none placeholder:opacity-35"
+          className="w-full bg-transparent pb-2.5 pt-1 text-[16px] tracking-[0.02em] outline-none placeholder:opacity-35 md:text-[14px]"
           style={{ color: ink() }}
         />
         <span className="absolute inset-x-0 bottom-0 h-px" style={{ background: error ? 'rgb(var(--sr-accent) / 0.8)' : ink(0.2) }} />
@@ -240,7 +240,7 @@ export default function OrderPanel({ open, product, size, onClose }) {
         <div className="mt-7 flex items-center gap-5">
           <div className="relative h-[96px] w-[84px] shrink-0 overflow-hidden" style={{ background: 'radial-gradient(80% 70% at 50% 35%, rgb(var(--sr-bg2) / 0.7), rgb(var(--sr-bg0)))', boxShadow: `inset 0 0 0 1px ${ink(0.08)}` }}>
             {order.productImage && (
-              <img data-or-img src={order.productImage} alt="" className="absolute inset-[8%] h-[84%] w-[84%] object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              <img data-or-img src={product?.hero?.thumb || order.productImage} alt="" className="absolute inset-[8%] h-[84%] w-[84%] object-contain" onError={(e) => { e.currentTarget.style.display = 'none' }} />
             )}
           </div>
           <div className="min-w-0">
@@ -397,7 +397,7 @@ export default function OrderPanel({ open, product, size, onClose }) {
                 </p>
                 {/* what travels with the words: the piece's picture, and the pin if there is one */}
                 <div data-or className="mt-6 flex items-center gap-4 px-4 py-3" style={{ background: 'rgb(var(--sr-ink) / 0.025)', boxShadow: `inset 0 0 0 1px ${ink(0.08)}` }}>
-                  {order.productImage && <img src={order.productImage} alt="" className="h-14 w-12 shrink-0 object-contain" />}
+                  {order.productImage && <img src={product?.hero?.thumb || order.productImage} alt="" className="h-14 w-12 shrink-0 object-contain" />}
                   <p className="text-[10.5px] leading-[1.7]" style={{ color: ink(0.6) }}>
                     The first link shows a photo of the {order.productName} in the chat{order.mapUrl ? ', and your map pin goes with it' : ''}.
                   </p>

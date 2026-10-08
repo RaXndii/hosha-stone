@@ -62,7 +62,7 @@ function Thumb({ product }) {
       }}
     >
       <img
-        src={g.src}
+        src={g.thumb || g.src}
         alt=""
         className={`absolute inset-0 h-full w-full p-1 ${g.kind === 'garment' ? 'object-contain' : 'object-cover'}`}
       />

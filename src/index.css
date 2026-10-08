@@ -21,6 +21,9 @@ html {
   /* a phone's grey tap flash would sit over the room like a stain; every
      control here answers a press itself */
   -webkit-tap-highlight-color: transparent;
+  /* a press is a press: no waiting to see whether it becomes a double tap
+     to zoom (pinching to zoom still works) */
+  touch-action: manipulation;
   /* type stays the size it was set, turned on its side too */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -282,6 +285,18 @@ button {
   50% { transform: translate3d(-3%, 0, 0) skewX(8deg); opacity: 0.4; }
 }
 
+/* film grain, shifting a step at a time; held still on a phone, where at
+   this strength the eye cannot tell, and a layer the size of the screen
+   moving forever is not free */
+.grain {
+  animation: grain-shift 8s steps(5) infinite;
+}
+@media (pointer: coarse) {
+  .grain {
+    animation: none;
+  }
+}
+
 @keyframes grain-shift {
   0%,
   100% {
@@ -320,6 +335,13 @@ button {
   0% { transform: translateY(-120%); opacity: 0; }
   28% { opacity: 1; }
   100% { transform: translateY(320%); opacity: 0; }
+}
+
+/* where the piece is pressed, held and swiped, a long press is not a
+   question about the photograph (iOS would offer to save it) */
+.showcase-zone,
+.closer-stage {
+  -webkit-touch-callout: none;
 }
 
 /* a closed panel, skipped entirely until it opens (src/lib/rest.js) */
@@ -583,18 +605,27 @@ button {
 }
 
 /* ------------------------------------------------------------------
-   The phone's buy bar (BuyBar.jsx). Glass on an ordinary phone: the room
-   scrolls under it, blurred. On a screen too short for that — a phone on its
-   side — the bar would sit over the piece's name and smear it, so there it is
-   a compact, solid strip, and the page fades into it instead.
+   The phone's buy bar (BuyBar.jsx). Glass on an iPhone: the room scrolls
+   under it, blurred — iOS draws that blur itself, for next to nothing.
+   Elsewhere the browser has to blur everything beneath it again every frame
+   anything there moves (the room's mist never stops), so the bar is a
+   little more solid instead and nothing is blurred. On a screen too short
+   for either — a phone on its side — the bar would sit over the piece's
+   name and smear it, so there it is a compact, solid strip, and the page
+   fades into it instead.
    ------------------------------------------------------------------ */
 .buy-bar {
   position: relative;
   padding: 10px max(14px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
-  background: linear-gradient(to bottom, rgb(var(--sr-bg0) / 0.72), rgb(var(--sr-bg0) / 0.94));
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  background: linear-gradient(to bottom, rgb(var(--sr-bg0) / 0.88), rgb(var(--sr-bg0) / 0.97));
   box-shadow: 0 -1px 0 rgb(var(--sr-ink) / 0.1);
+}
+@supports (-webkit-touch-callout: none) {
+  .buy-bar {
+    background: linear-gradient(to bottom, rgb(var(--sr-bg0) / 0.72), rgb(var(--sr-bg0) / 0.94));
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
 }
 
 @media (max-height: 500px) {
