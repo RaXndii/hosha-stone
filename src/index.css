@@ -620,3 +620,93 @@ button {
     font-size: 10px;
   }
 }
+
+/* ------------------------------------------------------------------
+   THE FILM (Film.jsx): a screen as large as the room allows, at 16:9.
+   On a phone held upright it runs edge to edge and its controls sit under
+   it, where they cover nothing, and stay; anywhere short, the screen takes
+   the whole height and the controls lie over its foot. Wherever they lie
+   over the film, they rest out of sight while it plays, and come back the
+   moment a hand moves.
+   ------------------------------------------------------------------ */
+.film-frame {
+  width: min(1280px, 92vw, calc((100svh - 230px) * 16 / 9));
+}
+@media (max-width: 767px) and (min-height: 521px) {
+  .film-frame {
+    width: 100vw;
+  }
+  .film-screen,
+  .film-screen .plate {
+    --cut: 0px !important;
+  }
+  .film-controls {
+    top: 100%;
+    bottom: auto;
+    padding-top: 14px;
+    background: none !important;
+  }
+  .film-top.film-resting,
+  .film-controls.film-resting {
+    opacity: 1 !important;
+    pointer-events: auto;
+  }
+}
+@media (max-height: 520px) {
+  .film-frame {
+    width: min(100vw, calc(100svh * 16 / 9));
+  }
+  .film-screen,
+  .film-screen .plate {
+    --cut: 0px !important;
+  }
+  .film-top {
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.65), transparent);
+  }
+}
+.film-resting {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+.film-wait {
+  animation: film-wait 1.1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes film-wait {
+  0% { transform: rotate(0deg) scale(0.8); opacity: 0.5; }
+  50% { transform: rotate(90deg) scale(1); opacity: 1; }
+  100% { transform: rotate(180deg) scale(0.8); opacity: 0.5; }
+}
+
+/* the closer look's details: a mark on the cloth breathes out a ring now and
+   then, each on its own beat, so the eye finds them without being called */
+.spot-ring {
+  animation: spot-ring 2.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  animation-delay: calc(var(--i, 0) * 0.45s);
+}
+@keyframes spot-ring {
+  0% { transform: rotate(45deg) scale(0.9); opacity: 0.95; }
+  70%, 100% { transform: rotate(45deg) scale(2.6); opacity: 0; }
+}
+/* the film's still in its card, never quite at rest */
+.closer[data-open] .film-card-still {
+  animation: film-card 9s ease-in-out infinite alternate;
+}
+@keyframes film-card {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.12) translate3d(-2%, -1.5%, 0); }
+}
+/* a row that scrolls sideways shows no bar */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* the closer look's stage, gone close: its edges fade into the room */
+.closer-stage[data-close] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 93%, transparent);
+  mask-composite: intersect;
+}

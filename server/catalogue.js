@@ -14,6 +14,30 @@ const imagesOf = (productId) =>
 const sizesOf = (productId) =>
   db.prepare('SELECT label, available FROM product_sizes WHERE product_id = ? ORDER BY position ASC').all(productId)
 
+const parse = (json) => { try { return json ? JSON.parse(json) : null } catch { return null } }
+
+/** The film as the site plays it, or nothing if there is none (or it is incomplete). */
+export function filmOf(row) {
+  const f = parse(row.film)
+  if (!f?.src) return undefined
+  return { src: f.src, small: f.small || f.src, ...(f.webm ? { webm: f.webm } : {}), poster: f.poster || '', cover: f.cover || f.poster || '', duration: Number(f.duration) || 0 }
+}
+
+/**
+ * The details marked on the front view. A spot that opened a photograph the
+ * house has since removed still marks its detail; it takes the visitor in
+ * close on the piece instead.
+ */
+export function spotsOf(row, images) {
+  const list = parse(row.spots)
+  if (!Array.isArray(list)) return undefined
+  const ids = new Set(images.map((i) => i.id))
+  const out = list
+    .filter((s) => Array.isArray(s?.at) && s.at.length === 2 && s.at.every((v) => Number.isFinite(v) && v >= 0 && v <= 1) && s.label)
+    .map((s, i) => ({ id: `spot-${i}`, at: s.at, label: s.label, note: s.note || '', ...(ids.has(s.photo) ? { photo: `img-${s.photo}` } : {}) }))
+  return out.length ? out : undefined
+}
+
 export function themeFor(row, images = imagesOf(row.id)) {
   const primary = images.find((i) => VIEWS[i.view]?.kind === 'garment')
   const tone = primary?.tone ? JSON.parse(primary.tone) : null
@@ -53,6 +77,8 @@ export function publicProduct(row) {
     sizes,
     theme: themeFor(row, images),
     hero: { src: hero?.src ?? images[0]?.src ?? '' },
+    film: filmOf(row),
+    spots: spotsOf(row, images),
     gallery: images.map((i) => {
       const v = VIEWS[i.view] ?? VIEWS.front
       const angleFree = v.kind === 'garment' && i.turn && !seenAngle.has(v.angle)
@@ -120,6 +146,8 @@ export function adminProduct(row) {
     publishedAt: row.published_at,
     sizes: sizesOf(row.id).map((s) => ({ label: s.label, available: !!s.available })),
     images: images.map((i) => ({ id: i.id, view: i.view, label: i.label, src: i.src, thumb: i.thumb ?? i.src, turn: i.turn, primary: !!i.is_primary, width: i.width, height: i.height })),
+    film: parse(row.film),
+    spots: (parse(row.spots) ?? []).map((sp) => ({ at: sp.at, label: sp.label, note: sp.note || '', photo: images.some((i) => i.id === sp.photo) ? sp.photo : null })),
     theme: themeFor(row, images),
   }
 }

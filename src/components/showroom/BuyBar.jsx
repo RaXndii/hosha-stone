@@ -224,11 +224,58 @@ export function SizeSheet({ open, onClose, product, size, onSize, onOrder, onSiz
   )
 }
 
+/* ------------------------------------------------------------------ the bar's content */
+
+/**
+ * The price, the heart and the way to order, in one row: the bar along the
+ * bottom of a phone, and the same row along the foot of the closer look.
+ */
+function BarContent({ product, size, dir, saved, kept = 0, onSave, onChoose, onOrder }) {
+  const chooseRef = useRef(null)
+  return (
+    <div className="buy-bar flex items-center gap-3">
+      <FavoriteButton active={saved} onToggle={onSave} name={product.name} count={kept} />
+      <div className="min-w-0 flex-1" aria-label={`$${product.price}${product.was ? `, was $${product.was}` : ''}`}>
+        {product.was ? (
+          <span className="relative mr-2 inline-block text-[11px] tabular-nums tracking-[0.04em]" style={{ color: ink(0.45) }}>
+            <Roll value={`$${product.was}`} dir={dir} duration={0.5} />
+            <span aria-hidden="true" className="absolute inset-x-[-2px] top-1/2 h-px -rotate-[8deg]" style={{ background: ink(0.55) }} />
+          </span>
+        ) : null}
+        <span className="text-[19px] font-medium tabular-nums leading-none tracking-[0.01em]" style={{ color: ink() }}>
+          <Roll value={`$${product.price}`} dir={dir} duration={0.55} />
+        </span>
+      </div>
+      <button
+        ref={chooseRef}
+        data-sound="none"
+        onClick={() => { if (size) { sound.play('order'); onOrder(size) } else onChoose(chooseRef) }}
+        className="relative isolate flex h-12 shrink-0 items-center gap-3 px-5 text-[10.5px] font-medium uppercase tracking-[0.26em] transition-[color,filter,transform] duration-500 active:scale-[0.98]"
+        style={{
+          transitionTimingFunction: EASE,
+          color: size ? 'rgb(var(--sr-bg0))' : ink(),
+          filter: size ? 'drop-shadow(0 0 12px rgb(var(--sr-accent) / 0.35))' : 'none',
+        }}
+      >
+        <Plate cut={9} fill={size ? 'rgb(var(--sr-ink))' : 'rgb(var(--sr-ink) / 0)'} edge={size ? 'rgb(var(--sr-ink) / 0)' : ink(0.42)} />
+        <Roll value={size ? `Order · ${size}` : 'Choose a size'} duration={0.45} />
+        <svg viewBox="0 0 22 12" className="h-[10px] w-[18px]" aria-hidden="true">
+          <path d="M1 6h19M15 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+/** The closer look's own bar, on a phone: the same row, in the flow of the closer look. */
+export function CloserBar(props) {
+  return <BarContent {...props} />
+}
+
 /* ------------------------------------------------------------------ the bar */
 
 export default function BuyBar({ product, size, dir, saved, kept = 0, onSave, onChoose, onOrder, watchRef, hidden, lit }) {
   const barRef = useRef(null)
-  const chooseRef = useRef(null)
   // the purchase on the page is in view: the bar has nothing to add
   const [covered, setCovered] = useState(false)
 
@@ -261,37 +308,7 @@ export default function BuyBar({ product, size, dir, saved, kept = 0, onSave, on
       style={{ visibility: 'hidden', opacity: 0 }}
       inert={!show || undefined}
     >
-      <div className="buy-bar flex items-center gap-3">
-        <FavoriteButton active={saved} onToggle={onSave} name={product.name} count={kept} />
-        <div className="min-w-0 flex-1" aria-label={`$${product.price}${product.was ? `, was $${product.was}` : ''}`}>
-          {product.was ? (
-            <span className="relative mr-2 inline-block text-[11px] tabular-nums tracking-[0.04em]" style={{ color: ink(0.45) }}>
-              <Roll value={`$${product.was}`} dir={dir} duration={0.5} />
-              <span aria-hidden="true" className="absolute inset-x-[-2px] top-1/2 h-px -rotate-[8deg]" style={{ background: ink(0.55) }} />
-            </span>
-          ) : null}
-          <span className="text-[19px] font-medium tabular-nums leading-none tracking-[0.01em]" style={{ color: ink() }}>
-            <Roll value={`$${product.price}`} dir={dir} duration={0.55} />
-          </span>
-        </div>
-        <button
-          ref={chooseRef}
-          data-sound="none"
-          onClick={() => { if (size) { sound.play('order'); onOrder(size) } else onChoose(chooseRef) }}
-          className="relative isolate flex h-12 shrink-0 items-center gap-3 px-5 text-[10.5px] font-medium uppercase tracking-[0.26em] transition-[color,filter,transform] duration-500 active:scale-[0.98]"
-          style={{
-            transitionTimingFunction: EASE,
-            color: size ? 'rgb(var(--sr-bg0))' : ink(),
-            filter: size ? 'drop-shadow(0 0 12px rgb(var(--sr-accent) / 0.35))' : 'none',
-          }}
-        >
-          <Plate cut={9} fill={size ? 'rgb(var(--sr-ink))' : 'rgb(var(--sr-ink) / 0)'} edge={size ? 'rgb(var(--sr-ink) / 0)' : ink(0.42)} />
-          <Roll value={size ? `Order · ${size}` : 'Choose a size'} duration={0.45} />
-          <svg viewBox="0 0 22 12" className="h-[10px] w-[18px]" aria-hidden="true">
-            <path d="M1 6h19M15 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
+      <BarContent product={product} size={size} dir={dir} saved={saved} kept={kept} onSave={onSave} onChoose={onChoose} onOrder={onOrder} />
     </div>
   )
 }

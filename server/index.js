@@ -3,7 +3,7 @@ import compression from 'compression'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROOT, MEDIA_DIR } from './db.js'
-import { seedIfEmpty } from './seed.js'
+import { addNewPieces, seedIfEmpty } from './seed.js'
 import { cookies, issueSetupCode } from './auth.js'
 import { publicRouter } from './routes/public.js'
 import { adminRouter } from './routes/admin.js'
@@ -102,6 +102,7 @@ app.use((err, req, res, _next) => {
 })
 
 if (seedIfEmpty()) console.log('  Seeded the database with the house’s current pieces.')
+for (const name of addNewPieces()) console.log(`  Added a new piece from the bundled catalogue: ${name}`)
 app.listen(PORT, () => {
   console.log(`\n  Hosha Stone  →  http://localhost:${PORT}\n  Admin        →  http://localhost:${PORT}/admin`)
   const code = issueSetupCode()

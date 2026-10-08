@@ -87,8 +87,10 @@ void take(sampler2D tex, float ang, float on, float flip, float pres, float phi,
   if (facing <= 0.0) return;
   float d = wrapPI(uTheta - ang);
   float close = exp(-(d * d - uDmin * uDmin) / (uSigma * uSigma));
-  // the photograph's empty background is exactly empty — no faint box around the piece
-  c.a = smoothstep(0.03, 0.08, c.a);
+  // the photograph's empty background is exactly empty — no faint box around
+  // the piece — while its edge keeps every step of its softness. (Rounding
+  // the edge up to solid made a cut-out's outline stair-stepped once enlarged.)
+  c.a *= smoothstep(0.012, 0.05, c.a);
   vec4 pm = vec4(c.rgb * c.a, c.a);
   float seen = smoothstep(0.06, 0.3, facing);
   accP += pres * seen * pm;
@@ -368,7 +370,7 @@ export default function Turntable({ views, fallbackSrc, ref, onFrame, onInteract
       gl.uniform1fv(u.flip, flip)
       gl.uniform1fv(u.pres, new Float32Array(presence))
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-      cbs.current.onFrame?.(wrap360(s.theta), s.zoom)
+      cbs.current.onFrame?.(wrap360(s.theta), s.zoom, s.dragging, s.zT)
     }
 
     const clampPan = (p, z) => {
@@ -476,11 +478,47 @@ export default function Turntable({ views, fallbackSrc, ref, onFrame, onInteract
       loadImage(frameSrc(list[best].turn, true)).then((img) => { if (!dead) { upload(best, img, 2048); s.dirty = true; kick() } }).catch(() => {})
     }
 
+    // a point of the front photograph (fractions across and down it) as it
+    // stands on screen now: where, in CSS pixels from the viewer's corner, and
+    // how squarely it faces the visitor (1 head-on, 0 edge-on, below 0 hidden)
+    const project = (u, v, live = true) => {
+      const { W, D } = shape()
+      const t = wrap360(live ? s.theta : 0) * DEG
+      const c = Math.cos(t), sn = Math.sin(t)
+      const R = Math.sqrt(W * W * c * c + D * D * sn * sn)
+      const psi = Math.atan2(D * sn, W * c)
+      const phi = Math.asin(clamp(2 * u - 1, -1, 1))
+      const gx = R * Math.sin(phi + psi)
+      const gy = v - 0.5
+      const z = live ? s.zoom : s.zT
+      const pan = live ? s.pan : s.pT
+      return {
+        x: (s.center[0] + (gx - pan[0]) * s.fit * z) / s.dpr,
+        y: (s.center[1] + (gy - pan[1]) * s.fit * z) / s.dpr,
+        facing: Math.cos(phi + psi),
+        zoom: z,
+      }
+    }
+    // go close on a point of the front, turning to face it first
+    const focusOn = (u, v, z = 2.4) => {
+      rotateTo(0)
+      const { W } = shape()
+      const gx = (clamp(u, 0, 1) - 0.5) * 2 * W
+      const z1 = clamp(z, 1, maxZoom())
+      s.zT = z1
+      s.pT = clampPan([gx, v - 0.5], z1)
+      if (z1 > 1.15 && !large) upgradeNearest()
+      kick()
+    }
+
     engine.current = {
       rotateTo: (deg) => rotateTo(deg),
       step: (d) => rotateTo(s.theta + d * 45, 700),
       zoomBy: (f) => zoomAt(f, s.center[0], s.center[1]),
       reset: () => { s.zT = 1; s.pT = [0, 0]; rotateTo(0); kick() },
+      unzoom: () => { s.zT = 1; s.pT = [0, 0]; s.dirty = true; kick() },
+      project,
+      focusOn,
       canTurn,
     }
 
@@ -641,6 +679,9 @@ export default function Turntable({ views, fallbackSrc, ref, onFrame, onInteract
     step: (d) => engine.current?.step(d),
     zoomBy: (f) => engine.current?.zoomBy(f),
     reset: () => engine.current?.reset(),
+    unzoom: () => engine.current?.unzoom(),
+    project: (u, v, live) => engine.current?.project(u, v, live) ?? null,
+    focusOn: (u, v, z) => engine.current?.focusOn(u, v, z),
   }), [])
 
   const canTurn = views.length > 1

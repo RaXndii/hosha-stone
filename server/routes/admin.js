@@ -7,6 +7,9 @@ import {
 } from '../auth.js'
 import { adminProduct, publicProduct } from '../catalogue.js'
 import { processImage, removeImageFiles, removeProductMedia, copyProductMedia, mediaUrl } from '../media.js'
+import { FILM_MAX, FILM_TMP, prepareFilm, removeFilmFiles } from '../film.js'
+import { mkdirSync } from 'node:fs'
+import { readFile, rm } from 'node:fs/promises'
 import { HttpError, clean, cleanLong, slugify, validateProduct, VIEWS, STATUSES, ORDER_STATUSES, SEASONS, BADGES, SIZE_SYSTEMS } from '../validate.js'
 import { DEFAULT_ABOUT, DEFAULT_SETTINGS, DEFAULT_SIZE_GUIDE } from '../seed.js'
 
@@ -229,10 +232,17 @@ adminRouter.post('/products/:id/duplicate', async (req, res) => {
     db.prepare('INSERT INTO product_sizes (product_id, label, available, position) SELECT ?, label, available, position FROM product_sizes WHERE product_id = ?').run(nid, row.id)
     // photographs are copied, so either piece can be edited without touching the other
     const rewrite = (u) => (u && u.startsWith(`/media/${row.id}/`) ? u.replace(`/media/${row.id}/`, `/media/${nid}/`) : u)
+    const newId = {}
     for (const i of db.prepare('SELECT * FROM product_images WHERE product_id = ?').all(row.id)) {
-      db.prepare(`INSERT INTO product_images (product_id, view, label, src, turn, thumb, focus, width, height, tone, position, is_primary)
+      const r = db.prepare(`INSERT INTO product_images (product_id, view, label, src, turn, thumb, focus, width, height, tone, position, is_primary)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(nid, i.view, i.label, rewrite(i.src), rewrite(i.turn), rewrite(i.thumb), i.focus, i.width, i.height, i.tone, i.position, i.is_primary)
+      newId[i.id] = Number(r.lastInsertRowid)
     }
+    // its film is copied with the photographs; the details marked on it point at the copy's own photographs
+    const film = readFilm(row)
+    if (film) db.prepare('UPDATE products SET film = ? WHERE id = ?').run(JSON.stringify(Object.fromEntries(Object.entries(film).map(([k, v]) => [k, typeof v === 'string' ? rewrite(v) : v]))), nid)
+    const spots = (() => { try { return JSON.parse(row.spots || 'null') } catch { return null } })()
+    if (Array.isArray(spots)) db.prepare('UPDATE products SET spots = ? WHERE id = ?').run(JSON.stringify(spots.map((sp) => ({ ...sp, photo: sp.photo ? newId[sp.photo] ?? null : null }))), nid)
     return nid
   })
   await copyProductMedia(row.id, newId)
@@ -328,6 +338,74 @@ adminRouter.delete('/products/:id/images/:imageId', async (req, res) => {
   })
   // bundled photographs (the house's originals) are never deleted from disk
   if (img.src.startsWith(`/media/${row.id}/`)) await removeImageFiles(img)
+  res.json(adminProduct(getProduct(row.id)))
+})
+
+/* ---------------------------------------------------------------- the film */
+
+// a film is written to disk as it arrives, not held in memory
+mkdirSync(FILM_TMP, { recursive: true })
+const filmUpload = multer({
+  storage: multer.diskStorage({ destination: FILM_TMP, filename: (_req, _file, cb) => cb(null, `up-${Date.now()}-${Math.random().toString(36).slice(2)}`) }),
+  limits: { fileSize: FILM_MAX, files: 3, fields: 10 },
+}).fields([{ name: 'film', maxCount: 1 }, { name: 'poster', maxCount: 1 }, { name: 'cover', maxCount: 1 }])
+const takeFilm = (req, res, next) => filmUpload(req, res, (err) => {
+  if (!err) return next()
+  if (err.code === 'LIMIT_FILE_SIZE') return next(new HttpError(413, `That film is over ${FILM_MAX / 1048576} MB. Export it shorter or smaller and try again.`))
+  next(new HttpError(400, 'The upload could not be read. Try again.'))
+})
+const dropUploads = (req) => Promise.all(Object.values(req.files ?? {}).flat().map((f) => rm(f.path, { force: true }).catch(() => {})))
+const readFilm = (row) => { try { return row.film ? JSON.parse(row.film) : null } catch { return null } }
+
+adminRouter.post('/products/:id/film', takeFilm, async (req, res) => {
+  try {
+    const row = getProduct(req.params.id)
+    const film = req.files?.film?.[0]
+    if (!film) throw new HttpError(422, 'Choose a film to upload.')
+    const frame = async (name) => {
+      const f = req.files?.[name]?.[0]
+      if (!f || f.size > 8 * 1024 * 1024) return null
+      return readFile(f.path)
+    }
+    const prepared = await prepareFilm(film.path, row.id, { frames: { poster: await frame('poster'), cover: await frame('cover') }, duration: req.body?.duration })
+    const before = readFilm(row)
+    db.prepare("UPDATE products SET film = ?, updated_at = datetime('now') WHERE id = ?").run(JSON.stringify(prepared), row.id)
+    await removeFilmFiles(before)
+    logActivity(req.user.id, 'added a film to', `${row.number} ${row.name}`)
+    res.status(201).json(adminProduct(getProduct(row.id)))
+  } finally {
+    await dropUploads(req)
+  }
+})
+
+adminRouter.delete('/products/:id/film', async (req, res) => {
+  const row = getProduct(req.params.id)
+  const before = readFilm(row)
+  db.prepare("UPDATE products SET film = NULL, updated_at = datetime('now') WHERE id = ?").run(row.id)
+  await removeFilmFiles(before)
+  logActivity(req.user.id, 'removed the film from', `${row.number} ${row.name}`)
+  res.json(adminProduct(getProduct(row.id)))
+})
+
+/* ---------------------------------------------------------------- the details marked on the piece */
+
+adminRouter.put('/products/:id/spots', (req, res) => {
+  const row = getProduct(req.params.id)
+  const list = req.body?.spots
+  if (!Array.isArray(list)) throw new HttpError(422, 'Send the list of details.')
+  if (list.length > 8) throw new HttpError(422, 'Mark at most eight details — the ones that matter most.')
+  const prints = new Set(db.prepare('SELECT id, view FROM product_images WHERE product_id = ?').all(row.id).filter((i) => VIEWS[i.view]?.kind === 'print').map((i) => i.id))
+  const spots = list.map((sp, i) => {
+    const at = Array.isArray(sp?.at) ? sp.at.map(Number) : []
+    if (at.length !== 2 || at.some((v) => !Number.isFinite(v) || v < 0 || v > 1)) throw new HttpError(422, `Detail ${i + 1} isn’t on the photo.`)
+    const label = clean(sp.label, 40)
+    if (!label) throw new HttpError(422, `Give detail ${i + 1} a name.`)
+    const photo = sp.photo === null || sp.photo === undefined || sp.photo === '' ? null : Number(sp.photo)
+    if (photo !== null && !prints.has(photo)) throw new HttpError(422, `The photo chosen for “${label}” is no longer there.`)
+    return { at: at.map((v) => Math.round(v * 1000) / 1000), label, note: clean(sp.note, 140), photo }
+  })
+  db.prepare("UPDATE products SET spots = ?, updated_at = datetime('now') WHERE id = ?").run(spots.length ? JSON.stringify(spots) : null, row.id)
+  logActivity(req.user.id, 'marked details on', `${row.number} ${row.name}`)
   res.json(adminProduct(getProduct(row.id)))
 })
 

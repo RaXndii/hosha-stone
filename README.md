@@ -1,7 +1,8 @@
 # Hosha Stone
 
-The Hosha Stone website (home showroom, Browsing archive, Look closer viewer,
-Kept, the Story, WhatsApp/Instagram ordering) and its admin at `/admin`.
+The Hosha Stone website (home showroom, Browsing archive, Look closer viewer
+with each piece's details and film, Kept, the Story, WhatsApp/Instagram
+ordering) and its admin at `/admin`.
 
 ## Running it
 
@@ -76,6 +77,75 @@ from the site itself, the page arrives with the catalogue already in it, the
 photograph it opens on is asked for before any script runs, and only the
 pieces a swipe can reach next are fetched ahead — none at all with Data Saver
 on.
+
+## Look closer
+
+*Look closer* puts a piece on a stage of its own.
+
+- **Turn it.** Drag it, or use the arrow keys, to turn it through the
+  angles it was photographed from; the dial at the foot says what you are
+  looking at. A piece photographed only from the front stays facing you.
+  Scroll, pinch or the zoom buttons go close, but never further than the
+  photograph can bear.
+- **The details are marked on the cloth.** A piece can carry up to eight
+  marks (the collar, the zip, a pocket), each a small diamond on the piece
+  that breathes now and then. Pressing one goes close on that spot with a
+  line about it, or opens the photograph that shows it. On a desk they are
+  also listed beside the stage. Set them in **/admin → a piece → Details on
+  the piece**: click where the detail is on the photograph, name it, add a
+  line, and pick a close photograph that shows it if there is one.
+- **Close photographs** (the collar, on the body, the back) open as large as
+  the screen allows, cut like the rest of the house. Pinch, scroll or
+  double-tap to go in (up to four times, less for a small photograph), drag
+  to move, swipe for the next.
+- **The film**, if the piece has one, has its own card among them and opens
+  out of it.
+
+## Films
+
+A piece can have a short film. It plays from its card in Look closer, and
+from *Watch the film* under *Look closer* on the piece's page. It opens out
+of whatever was pressed, with its sound if the visitor has the house's sound
+on, or muted with a button offering the sound if not. The house's music
+steps aside while it plays. The controls are the house's own and work from
+the keyboard too (space, ← →, M, F, Esc); the film keeps the keyboard until
+it is closed. On a phone held upright the controls sit under the picture and
+stay; anywhere they lie over it, they get out of the way while it plays.
+
+To add one: **/admin → a piece → Film**.
+
+- **An MP4 (or a phone's .mov) with H.264 video**, the kind every phone
+  plays, up to 80 MB and five minutes long (under thirty seconds is best).
+  HEVC, an iPhone's default, is refused with instructions for exporting it
+  correctly (on an iPhone: Settings → Camera → Formats → Most Compatible).
+- The file is checked by what is inside it, not by its name, and stored
+  under a random name.
+- If the server has **ffmpeg** (on the PATH, or at `FFMPEG_PATH`), the film
+  is repacked, not re-encoded, so it starts playing before it has fully
+  arrived, and its first frame and a still from its middle are taken there.
+  Without ffmpeg it is kept as it came and your browser draws those two
+  frames as you upload. Either works; ffmpeg makes a long film start sooner.
+- The film itself isn't downloaded until someone asks for it (only its
+  small still is). A phone on Data Saver or 2G gets the lighter version
+  where there is one, and a host that won't serve a film in pieces is
+  handled by fetching it whole.
+
+The Espresso jacket's film ships with the site (`public/film/`), as an H.264
+MP4 at 720p and 480p, plus a VP9 WebM for browsers built without H.264. It
+was cut down from the ten-second film supplied. The two seconds where a
+camera rig crosses in front of the jacket are gone. The front shot before
+them is held a little longer (slowed down, with frames made in between) and
+dissolves into the turn behind. The sound is cut to match, so its beat still
+lands on the next cut.
+
+## New pieces in the bundled catalogue
+
+`src/data/static-catalogue.js` seeds a fresh database. A piece added there
+later still reaches a database that already exists, if it carries a higher
+`since` than every piece before it (the Espresso jacket has `since: 2`). On
+the next start the server adds it once, featured and first in the room,
+under the number it was written with unless that number is taken. Delete it
+in the admin and it stays deleted, because it is only ever added once.
 
 ## Sound
 
@@ -154,6 +224,8 @@ The server also answers `/robots.txt` and `/sitemap.xml`, and writes
 | --- | --- |
 | Database (apparel, categories, orders, About, size guide, settings, admins) | `storage/hosha.db` |
 | Uploaded photos (processed to WebP) | `storage/media/` |
+| Uploaded films and their two stills | `storage/media/<piece>/film-*` |
+| Films that ship with the site | `public/film/` |
 | Share cards, once drawn | `storage/share/` |
 | Server and API | `server/` |
 | Tags a scraper reads; share cards | `server/meta.js`, `server/share.js` |
@@ -168,7 +240,7 @@ The server also answers `/robots.txt` and `/sitemap.xml`, and writes
 Set `HS_STORAGE=/path` to keep it elsewhere (e.g. a persistent disk on a host).
 `storage/share/` is the one part that need not be kept: it redraws itself.
 
-On a fresh database the server seeds the house's current five pieces, the About
+On a fresh database the server seeds the house's current six pieces, the About
 text and the ordering settings, so the site starts exactly as it was.
 
 ## The size guide
@@ -193,6 +265,8 @@ Any host that runs Node and keeps a persistent disk (Render, Railway, Fly, a VPS
 - `PORT` is read from the environment
 - set `PUBLIC_URL=https://your-domain` so links, cards and the sitemap are
   absolute (otherwise the address the request arrived on is used)
+- optionally install ffmpeg (or set `FFMPEG_PATH`) so uploaded films are
+  repacked to start sooner
 
 ## Security, in short
 
@@ -204,7 +278,9 @@ Any host that runs Node and keeps a persistent disk (Render, Railway, Fly, a VPS
 - Everything is validated on the server. Order prices are always taken from the
   database, never from the browser.
 - Uploads: up to 15 MB, checked as real images, re-encoded to WebP, stored
-  under random names.
+  under random names. Films: up to 80 MB, read by their contents rather than
+  their names, H.264 only, stored under random names; a refused upload
+  leaves nothing behind.
 - `/saved` is this visitor's own and is never indexed. What they kept is held
   in their browser; the server is told only which pieces, under a random id
   the browser made up, to count them — no name, account or address. That

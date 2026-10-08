@@ -41,9 +41,26 @@ export const themeVars = (theme) => {
 
 export const pad2 = (n) => String(n).padStart(2, '0')
 
+/** A film's length, or a place in it, as a clock reads it: whole seconds, m:ss. */
+export const clock = (s) => {
+  const t = Math.max(0, Math.floor(s || 0))
+  return `${Math.floor(t / 60)}:${pad2(t % 60)}`
+}
+
 /** The views the turntable can use: every whole-garment photograph with an angle. */
 export const turnViews = (product) =>
   product.gallery.filter((g) => g.kind === 'garment' && g.turn && typeof g.angle === 'number')
 
 /** Close photographs, shown on their own in the closer look. */
 export const details = (product) => product.gallery.filter((g) => g.kind === 'print')
+
+/**
+ * The details marked on the front view, each with the index of the close
+ * photograph it opens (or -1: it takes the visitor in close on the piece).
+ */
+export const spotsOf = (product) => {
+  const prints = details(product)
+  return (product.spots ?? [])
+    .filter((s) => Array.isArray(s.at) && s.at.length === 2 && s.label)
+    .map((s, i) => ({ ...s, id: s.id ?? `spot-${i}`, photoIndex: s.photo ? prints.findIndex((d) => d.id === s.photo) : -1 }))
+}

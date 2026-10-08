@@ -21,6 +21,7 @@ import { SOUNDS, makeKit, makeScore, mtof } from './recipes.js'
  *   sound.scene('archive')         the music for a page
  *   sound.room(theme, i)           the showroom's piece: key and light
  *   sound.duck(true)               the house lights are going down
+ *   sound.hush(true)               a film is playing: the music steps aside
  */
 const KEY = 'hs-sound'
 const MUSIC = 0.42 // the score's level: under the touches, never over them
@@ -36,6 +37,8 @@ let score = null
 let timer = 0
 
 let wanted = { scene: null, transpose: 0, brightness: 1 }
+let ducked = false
+let hushed = false
 let enabled = readPref()
 const listeners = new Set()
 
@@ -166,6 +169,14 @@ function tune(name, o) {
   }
 }
 
+/** The music's level under whatever is lowering it: a film silences it, a change of piece dips it. */
+function level(time) {
+  if (!ctx) return
+  const g = duckGain.gain
+  g.cancelScheduledValues(ctx.currentTime)
+  g.setTargetAtTime(hushed ? 0 : ducked ? 0.35 : 1, ctx.currentTime, time)
+}
+
 /* ------------------------------------------------------------------ the voice */
 
 export const sound = {
@@ -198,10 +209,14 @@ export const sound = {
 
   /** The house lights go down between two pieces; the music goes down with them. */
   duck(down) {
-    if (!ctx) return
-    const g = duckGain.gain
-    g.cancelScheduledValues(ctx.currentTime)
-    g.setTargetAtTime(down ? 0.35 : 1, ctx.currentTime, down ? 0.18 : 0.5)
+    ducked = down
+    level(down ? 0.18 : 0.5)
+  },
+
+  /** A film is playing: the music steps out of its way, and comes back after. */
+  hush(on) {
+    hushed = on
+    level(on ? 0.25 : 0.9)
   },
 
   set(on) {

@@ -136,6 +136,12 @@ const MIGRATIONS = [
   );
   CREATE INDEX idx_hearts_product ON hearts(product_id);
   `,
+  // a piece's film (JSON: src, small, poster, cover, duration) and the details
+  // marked on its front view (JSON: [{ at: [x, y], label, note, photo }])
+  `
+  ALTER TABLE products ADD COLUMN film TEXT;
+  ALTER TABLE products ADD COLUMN spots TEXT;
+  `,
 ]
 
 const { user_version: version } = db.prepare('PRAGMA user_version').get()

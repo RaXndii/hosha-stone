@@ -12,7 +12,8 @@ import Closer from './Closer.jsx'
 import { frameSrc, prefersLargeFrames } from './Turntable.jsx'
 import OrderPanel from './OrderPanel.jsx'
 import SizeGuide from './SizeGuide.jsx'
-import BuyBar, { SizeSheet } from './BuyBar.jsx'
+import BuyBar, { CloserBar, SizeSheet } from './BuyBar.jsx'
+import Film from './Film.jsx'
 import { usePage } from '../../lib/page.jsx'
 import { pageHead, pieceHead } from '../../lib/head.js'
 import { frugal } from '../../lib/net.js'
@@ -67,6 +68,7 @@ export default function Showroom({ initialId, entry }) {
   const cameraRef = useRef(null)
   const parallaxRef = useRef(null)
   const cursorRef = useRef(null)
+  const filmRef = useRef(null)
 
   const [category, setCategory] = useState('all')
   const [productId, setProductId] = useState(first.id)
@@ -240,6 +242,10 @@ export default function Showroom({ initialId, entry }) {
       i.src = frameSrc(v.turn, large)
     })
   }, [productId])
+
+  /* ------------------------------------------------------- the film */
+  // opened from the press itself: a phone lets a film's sound start only there
+  const openFilm = useCallback((from) => filmRef.current?.open(from), [])
 
   /* ------------------------------------------------------- closer look */
   const openCloser = useCallback(() => {
@@ -566,7 +572,7 @@ export default function Showroom({ initialId, entry }) {
 
       {/* left: who the piece is */}
       <div className="relative z-20 order-1 px-6 lg:absolute lg:left-[max(3rem,3.7vw)] lg:top-[34%] lg:w-[32vw] lg:px-0">
-        <Title product={product} onLook={openCloser} onPrefetch={prefetchFrames} />
+        <Title product={product} onLook={openCloser} onPrefetch={prefetchFrames} onFilm={product.film ? openFilm : null} />
       </div>
 
       {/* right: the next piece */}
@@ -600,6 +606,19 @@ export default function Showroom({ initialId, entry }) {
         product={product}
         onClose={() => setCloser(false)}
         sourceRef={stageRef}
+        onFilm={openFilm}
+        bar={
+          <CloserBar
+            product={product}
+            size={size}
+            dir={dir}
+            saved={saved.includes(product.id)}
+            kept={keptBy(product.id)}
+            onSave={(on) => toggleSaved(product.id, on)}
+            onChoose={(ref) => { sheetFrom.current = ref.current; setSizeSheet(true) }}
+            onOrder={() => setOrdering(true)}
+          />
+        }
         purchase={
           <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
         }
@@ -619,6 +638,7 @@ export default function Showroom({ initialId, entry }) {
       <MobileMenu open={overlay === 'menu'} onClose={() => setOverlay(null)} onNav={onNav} category={category} onCategory={pickCategory} />
 
       <OrderPanel open={ordering} product={product} size={size} onClose={() => setOrdering(false)} />
+      <Film key={product.id} ref={filmRef} film={product.film} title={product.name} />
       <SizeGuide open={guide} product={product} onClose={() => setGuide(false)} />
 
       {/* phone: buying along the bottom edge, where a thumb rests */}

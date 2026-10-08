@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import Roll from './Roll.jsx'
-import { pad2 } from '../../data/showroom.js'
+import { clock, pad2 } from '../../data/showroom.js'
 import FavoriteButton from './PixelHeart.jsx'
 import Plate from '../ui/Plate.jsx'
 import Loupe from '../ui/Loupe.jsx'
@@ -73,10 +73,35 @@ function LookCloser({ product, onLook, onPrefetch }) {
 }
 
 /**
- * Who the piece is, in four lines: the house and its number, its name, the
- * line it carries, and the way in to the photographs.
+ * The film, for a piece that has one: a second, quieter way in, under the
+ * first. It plays from the press itself, so its sound can start with it.
  */
-export function Title({ product, onLook, onPrefetch }) {
+function WatchFilm({ film, onFilm }) {
+  return (
+    <button
+      data-fade
+      data-sound="none"
+      onClick={(e) => onFilm(e.currentTarget)}
+      className="group ml-[72px] flex h-11 items-center gap-3 text-[10px] font-medium uppercase tracking-[0.32em]"
+      style={{ color: ink(0.72) }}
+    >
+      <span className="grid place-items-center transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110" style={{ filter: 'drop-shadow(0 0 7px rgb(var(--sr-neon) / 0.7))' }}>
+        <span className="lozenge grid h-[22px] w-[22px] place-items-center" style={{ background: 'rgb(var(--sr-neon) / 0.92)' }}>
+          <svg viewBox="0 0 16 16" className="ml-px h-2 w-2" style={{ color: 'rgb(var(--sr-bg0))' }} aria-hidden="true"><path d="M4.5 2.6 13 8l-8.5 5.4z" fill="currentColor" /></svg>
+        </span>
+      </span>
+      <span className="transition-colors duration-500 group-hover:text-[rgb(var(--sr-ink))]">Watch the film</span>
+      {film.duration >= 1 && <span className="tabular-nums tracking-[0.14em]" style={{ color: ink(0.4) }}>{clock(film.duration)}</span>}
+    </button>
+  )
+}
+
+/**
+ * Who the piece is, in four lines: the house and its number, its name, the
+ * line it carries, and the way in to the photographs — and to its film, if
+ * it has one.
+ */
+export function Title({ product, onLook, onPrefetch, onFilm }) {
   return (
     <div data-quiet className="max-w-[34rem]">
       <Reveal className="text-[10.5px] font-medium uppercase tracking-[0.36em]" style={{ color: ink(0.62) }}>
@@ -93,6 +118,7 @@ export function Title({ product, onLook, onPrefetch }) {
         {product.tagline}
       </Reveal>
       <LookCloser product={product} onLook={onLook} onPrefetch={onPrefetch} />
+      {product.film && onFilm && <WatchFilm film={product.film} onFilm={onFilm} />}
     </div>
   )
 }

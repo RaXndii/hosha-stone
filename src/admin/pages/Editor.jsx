@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, upload } from '../api.js'
 import { Button, C, Confirm, ErrorNote, Input, Label, PageTitle, Section, Select, Status, Textarea, Toggle, useToast, when } from '../ui.jsx'
+import { DetailsSection, FilmSection } from './Showcase.jsx'
 
 const EMPTY = {
   name: '', number: '', styleCode: '', short: '', line: '', tagline: '', description: '',
@@ -424,18 +425,26 @@ export default function Editor({ id }) {
           <Photos product={product} views={meta.views} ensureSaved={() => (product && !dirty ? product.id : save({ quiet: true }))} onProduct={(p) => { setProduct(p); if (p.images?.length) { setFields(({ images: _gone, ...rest }) => rest); setErr(null) } }} error={fields.images} />
         </Section>
 
-        <Section index="03" title="Sizes and availability">
+        <Section index="03" title="Film" note="Optional. A short film of the piece — it plays from the closer look, and from a line under “Look closer”. Ten to thirty seconds is plenty.">
+          <FilmSection product={product} ensureSaved={() => (product && !dirty ? product.id : save({ quiet: true }))} onProduct={setProduct} />
+        </Section>
+
+        <Section index="04" title="Details on the piece" note="Optional. Mark what is worth a closer look — a collar, a zip, a pocket. Each mark sits on the piece in the closer look and says in a line what it is.">
+          <DetailsSection key={`${product?.id}-${JSON.stringify(product?.spots ?? [])}`} product={product} onProduct={setProduct} />
+        </Section>
+
+        <Section index="05" title="Sizes and availability">
           <Sizes systems={meta.sizeSystems} sizes={form.sizes} onChange={set('sizes')} error={fields.sizes} />
         </Section>
 
-        <Section index="04" title="Price">
+        <Section index="06" title="Price">
           <div className="grid max-w-xl gap-x-10 gap-y-7 sm:grid-cols-2">
             <Input id="price" label="Price (USD)" prefix="$" inputMode="decimal" placeholder="72" value={form.price} onChange={set('price')} error={fields.price} />
             <Input id="was" label="Original price" prefix="$" inputMode="decimal" placeholder="optional" value={form.was} onChange={set('was')} error={fields.was} hint="shown struck through" />
           </div>
         </Section>
 
-        <Section index="05" title="Presentation" note="The room each piece is shown in is lit from the colours of its main photo. Choose an accent only to override the glow.">
+        <Section index="07" title="Presentation" note="The room each piece is shown in is lit from the colours of its main photo. Choose an accent only to override the glow.">
           <div className="grid gap-x-10 gap-y-8 md:grid-cols-2">
             <div className="space-y-6">
               <Toggle checked={form.featured} onChange={set('featured')} label="Featured — shown first on the home page" />
