@@ -552,7 +552,7 @@ export default function Showroom({ initialId, entry }) {
   return (
     <div
       ref={rootRef}
-      className="relative flex min-h-[100svh] flex-col overflow-x-hidden lg:block lg:h-[100svh] lg:min-h-[640px] lg:overflow-hidden"
+      className="room relative flex min-h-[100svh] flex-col overflow-x-hidden lg:block lg:h-[100svh] lg:min-h-[640px] lg:overflow-hidden"
       style={{ ...initialVars, background: 'rgb(var(--sr-bg0))', color: 'rgb(var(--sr-ink))' }}
     >
       <SceneBack />
@@ -583,7 +583,7 @@ export default function Showroom({ initialId, entry }) {
         onPointerMove={onStageMove}
         onPointerUp={onStageUp}
         onPointerCancel={onStageCancel}
-        className="showcase-zone absolute left-1/2 top-[12.5svh] z-10 h-[41svh] w-[min(88vw,46svh)] -translate-x-1/2 touch-pan-y lg:top-[18.5%] lg:h-[56%] lg:w-[min(36vw,62vh)] xl:w-[min(42vw,66vh)]"
+        className="showcase-zone absolute left-1/2 top-[calc(var(--room-h)*0.125)] z-10 h-[calc(var(--room-h)*0.41)] w-[min(88vw,calc(var(--room-h)*0.46))] -translate-x-1/2 touch-pan-y lg:top-[18.5%] lg:h-[56%] lg:w-[min(36vw,62vh)] xl:w-[min(42vw,66vh)]"
       >
         <div ref={cameraRef} className="relative h-full w-full will-change-transform" style={{ transformOrigin: '50% 60%' }}>
           <div data-hero className="absolute inset-0 will-change-transform">
@@ -612,7 +612,7 @@ export default function Showroom({ initialId, entry }) {
         <nav
           aria-label="Pieces"
           data-fade
-          className="absolute inset-x-0 top-[58.6svh] z-[14] flex h-[4.4svh] items-center justify-center lg:hidden"
+          className="absolute inset-x-0 top-[calc(var(--room-h)*0.586)] z-[14] flex h-[calc(var(--room-h)*0.044)] items-center justify-center lg:hidden"
         >
           {list.map((p, i) => {
             const on = i === pos
@@ -640,10 +640,12 @@ export default function Showroom({ initialId, entry }) {
       )}
 
       {/* phone: the stage takes the first screen; the words follow below */}
-      <div aria-hidden="true" className="h-[calc(65svh_-_72px)] shrink-0 lg:hidden" />
+      <div aria-hidden="true" className="h-[calc(var(--room-h)*0.65_-_72px)] shrink-0 lg:hidden" />
 
-      {/* left: who the piece is */}
-      <div className="relative z-20 order-1 px-6 lg:absolute lg:left-[max(3rem,3.7vw)] lg:top-[34%] lg:w-[32vw] lg:px-0">
+      {/* left: who the piece is. On a phone it holds the rest of the first
+          screen, down to the buy bar, so the price and sizes on the page begin
+          just under it — never half-shown behind it, beside its own price */}
+      <div className="relative z-20 order-1 min-h-[calc(var(--room-h)*0.35)] px-6 lg:absolute lg:left-[max(3rem,3.7vw)] lg:top-[34%] lg:min-h-0 lg:w-[32vw] lg:px-0">
         <Title product={product} onLook={openCloser} onPrefetch={prefetchFrames} onFilm={product.film ? openFilm : null} />
       </div>
 

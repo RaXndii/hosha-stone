@@ -145,7 +145,7 @@ function Rock() {
 /** Everything behind the piece. (Memoised, like the rest of the set: it never changes, so a change of piece never redraws it.) */
 export const SceneBack = memo(function SceneBack() {
   return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 h-[100svh] overflow-hidden lg:h-full ${GEOMETRY}`}>
+    <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 h-[var(--room-h,100svh)] overflow-hidden lg:h-full ${GEOMETRY}`}>
       <div
         className="absolute inset-0"
         style={{ background: `radial-gradient(75% 70% at 50% 34%, ${c('bg2')} 0%, ${c('bg1')} 46%, ${c('bg0')} 100%)` }}
@@ -231,7 +231,7 @@ export const SceneBack = memo(function SceneBack() {
 /** Mist in front of the piece's hem, the edges closing in, and grain. */
 export const SceneFront = memo(function SceneFront() {
   return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 z-[12] h-[100svh] overflow-hidden lg:h-full ${GEOMETRY}`}>
+    <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 z-[12] h-[var(--room-h,100svh)] overflow-hidden lg:h-full ${GEOMETRY}`}>
       <div
         className="absolute h-[22%] w-[70%] will-change-transform"
         style={{

@@ -9,6 +9,11 @@ export default {
   experimental: { optimizeUniversalDefaults: true },
   theme: {
     extend: {
+      // a phone whose screen is short (an iPhone SE): the title tightens so
+      // the way in to the photographs stays above the buy bar
+      screens: {
+        short: { raw: '(max-height: 620px) and (max-width: 1023px)' },
+      },
       colors: {
         night: '#05041a',
         abyss: '#03020d',

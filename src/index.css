@@ -337,6 +337,20 @@ button {
   100% { transform: translateY(320%); opacity: 0; }
 }
 
+/* The showroom on a phone is composed for the screen above its buy bar —
+   the bar is always there, so the room, the piece, its plinth and its name
+   are laid out in the height that is left (the bar: 48px of button, 10px
+   over it and 10px or the home indicator's inset under it), never under it.
+   On a desk the room is the whole window. */
+.room {
+  --room-h: max(calc(100svh - 58px - max(10px, env(safe-area-inset-bottom))), 72svh);
+}
+@media (min-width: 1024px) {
+  .room {
+    --room-h: 100svh;
+  }
+}
+
 /* where the piece is pressed, held and swiped, a long press is not a
    question about the photograph (iOS would offer to save it) */
 .showcase-zone,

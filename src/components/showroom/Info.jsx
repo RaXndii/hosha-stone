@@ -51,7 +51,7 @@ function LookCloser({ product, onLook, onPrefetch }) {
       onPointerEnter={onPrefetch}
       onFocus={onPrefetch}
       aria-label={`Look closer at the ${product.name}`}
-      className="group mt-8 flex items-center gap-5 py-3 text-[10.5px] font-medium uppercase tracking-[0.34em] lg:mt-12"
+      className="group mt-5 flex items-center gap-5 py-3 text-[10.5px] font-medium uppercase tracking-[0.34em] short:mt-3 short:py-2 lg:mt-12"
       style={{ color: ink(0.82) }}
     >
       <span
@@ -109,12 +109,12 @@ export function Title({ product, onLook, onPrefetch, onFilm }) {
       </Reveal>
       <Reveal
         as="h1"
-        className="mt-4 font-display text-[clamp(1.5rem,2.5vw,2.85rem)] font-normal uppercase leading-[1.12] tracking-[0.14em] lg:mt-5"
+        className="mt-3 font-display text-[clamp(1.5rem,2.5vw,2.85rem)] font-normal uppercase leading-[1.12] tracking-[0.14em] short:mt-2 short:text-[1.3rem] lg:mt-5"
         style={{ color: ink() }}
       >
         {product.name}
       </Reveal>
-      <Reveal as="p" className="mt-4 text-[10.5px] uppercase tracking-[0.36em] lg:mt-5" style={{ color: ink(0.5) }}>
+      <Reveal as="p" className="mt-3 text-[10.5px] uppercase tracking-[0.36em] short:mt-2 lg:mt-5" style={{ color: ink(0.5) }}>
         {product.tagline}
       </Reveal>
       <LookCloser product={product} onLook={onLook} onPrefetch={onPrefetch} />
