@@ -78,6 +78,19 @@ photograph it opens on is asked for before any script runs, and only the
 pieces a swipe can reach next are fetched ahead — none at all with Data Saver
 on.
 
+## Ordering
+
+The order form prepares the message and the customer sends it themselves on
+WhatsApp (or pastes it on Instagram). Two things travel with it:
+
+- **The piece's photograph.** WhatsApp won't let a website attach a picture
+  to a ready-made message, so the message opens with the piece's own link,
+  and WhatsApp and Instagram turn that link into a picture card of the
+  piece's front (its share card) in the chat. This needs the site to be
+  reachable at its public address (set `PUBLIC_URL`).
+- **Where to deliver.** With the customer's permission, a map pin of their
+  exact location; otherwise the area they typed.
+
 ## Look closer
 
 *Look closer* puts a piece on a stage of its own.
@@ -313,6 +326,14 @@ Any host that runs Node and keeps a persistent disk (Render, Railway, Fly, a VPS
   under random names. Films: up to 80 MB, read by their contents rather than
   their names, H.264 only, stored under random names; a refused upload
   leaves nothing behind.
+- An order can carry the customer's exact location, only if they allow it:
+  "Share my exact location" in the order form (also asked once when they
+  press Review message) uses the browser's own permission prompt. A refusal
+  is fine — the typed area is sent instead. The position goes into the
+  message as a map link and into the order (Orders → Map in the admin); it
+  is never kept in the browser. The site allows location for its own pages
+  only (`Permissions-Policy: geolocation=(self)`), and browsers give it only
+  over HTTPS.
 - `/saved` is this visitor's own and is never indexed. What they kept is held
   in their browser; the server is told only which pieces, under a random id
   the browser made up, to count them — no name, account or address. That

@@ -29,6 +29,32 @@ function InstagramIcon() {
   )
 }
 
+/**
+ * The customer's position, asked for only with their say-so: the browser shows
+ * its own permission prompt, and a refusal is final for this visit — the
+ * typed area is sent instead. Never kept on the device afterwards.
+ * → { lat, lng, accuracy } | { failed: 'denied' | 'unavailable' }
+ */
+function locate() {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { resolve({ failed: 'unavailable' }); return }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy) }),
+      (err) => resolve({ failed: err?.code === 1 ? 'denied' : 'unavailable' }),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    )
+  })
+}
+
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-[15px] w-[15px]" fill="none" aria-hidden="true">
+      <path d="M8 14.5s4.8-4.6 4.8-8.1A4.8 4.8 0 0 0 3.2 6.4c0 3.5 4.8 8.1 4.8 8.1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <circle cx="8" cy="6.4" r="1.7" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  )
+}
+
 function Field({ id, label, value, onChange, placeholder, error, autoComplete }) {
   return (
     <label data-or className="group/f block" htmlFor={id}>
@@ -71,6 +97,18 @@ export default function OrderPanel({ open, product, size, onClose }) {
   const [copied, setCopied] = useState(null) // null | true | false
   // a reference for this request, made when the message is reviewed, so the house can match it
   const [ref, setRef] = useState(null)
+  // the customer's exact position, if they choose to share it: idle | asking | shared | denied | unavailable
+  const [geo, setGeo] = useState({ status: 'idle', coords: null })
+  const askedRef = useRef(false)
+  const shareLocation = async () => {
+    askedRef.current = true
+    setGeo({ status: 'asking', coords: null })
+    const r = await locate()
+    const next = r.failed ? { status: r.failed, coords: null } : { status: 'shared', coords: r }
+    setGeo(next)
+    if (!r.failed) sound.play('bead', { index: 3, count: 5 })
+    return next
+  }
 
   useEffect(() => {
     const { customerName, location, language, contactMethod } = form
@@ -78,8 +116,8 @@ export default function OrderPanel({ open, product, size, onClose }) {
   }, [form])
 
   const { order, errors } = useMemo(
-    () => buildOrder({ productId: product?.id, size, ...form, ref }),
-    [product, size, form, ref],
+    () => buildOrder({ productId: product?.id, size, ...form, ref, coords: geo.coords }),
+    [product, size, form, ref, geo.coords],
   )
   const message = useMemo(() => orderMessage(order), [order])
   const blocked = errors.product || errors.size
@@ -94,7 +132,7 @@ export default function OrderPanel({ open, product, size, onClose }) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const phone = window.matchMedia('(max-width: 767px)').matches
     // back to the first step once it has gone, out of sight
-    const reset = () => { gsap.set(root, { visibility: 'hidden' }); setStep('details'); setTried(false); setCopied(null) }
+    const reset = () => { gsap.set(root, { visibility: 'hidden' }); setStep('details'); setTried(false); setCopied(null); setGeo({ status: 'idle', coords: null }); askedRef.current = false }
     if (open) {
       gsap.set(root, { visibility: 'visible' })
       if (reduced) { gsap.set([panel, scrim], { opacity: 1, clearProps: 'transform,filter' }); return }
@@ -141,9 +179,16 @@ export default function OrderPanel({ open, product, size, onClose }) {
   }, [open, step, onClose])
 
   /* ---------------------------------------------- moving through it */
-  const review = () => {
+  const review = async () => {
+    if (geo.status === 'asking') return
     setTried(true)
-    if (Object.keys(errors).length) {
+    // the location is asked for as the request is made, once, if it has not been already
+    let found = errors
+    if (!askedRef.current && geo.status === 'idle') {
+      const g = await shareLocation()
+      found = buildOrder({ productId: product?.id, size, ...form, ref, coords: g.coords }).errors
+    }
+    if (Object.keys(found).length) {
       gsap.fromTo(panelRef.current.querySelectorAll('[aria-invalid="true"], [data-or-methods][data-missing]'), { x: 0 }, { keyframes: [{ x: -4, duration: 0.07 }, { x: 4, duration: 0.09 }, { x: -2, duration: 0.08 }, { x: 0, duration: 0.12 }] })
       return
     }
@@ -231,7 +276,46 @@ export default function OrderPanel({ open, product, size, onClose }) {
 
                 <div className="mt-9 space-y-6">
                   <Field id="or-name" label="Your name" value={form.customerName} onChange={set('customerName')} placeholder="Name" autoComplete="name" error={err('customerName', 'Add your name')} />
-                  <Field id="or-location" label="Location" value={form.location} onChange={set('location')} placeholder="City, area or neighbourhood" autoComplete="address-level2" error={err('location', 'Where should it go?')} />
+                  <Field id="or-location" label="Location" value={form.location} onChange={set('location')} placeholder={geo.coords ? 'Area or landmark (optional)' : 'City, area or neighbourhood'} autoComplete="address-level2" error={err('location', 'Where should it go? Type it, or share it below')} />
+                </div>
+
+                {/* the exact place, from the phone itself, with the customer's permission */}
+                <div data-or className="mt-5">
+                  {geo.status === 'shared' ? (
+                    <div className="relative isolate flex items-center gap-3 px-4 py-3" style={{ color: ink() }}>
+                      <Plate cut={8} fill="rgb(var(--sr-neon) / 0.1)" edge="rgb(var(--sr-neon) / 0.7)" />
+                      <span style={{ color: 'rgb(var(--sr-neon))' }}><PinIcon /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10.5px] font-medium uppercase tracking-[0.22em]">Exact location added</span>
+                        <span className="mt-1 block text-[10.5px] tracking-[0.04em]" style={{ color: ink(0.55) }}>
+                          A map pin goes with your message{geo.coords.accuracy ? ` · within about ${geo.coords.accuracy} m` : ''}
+                        </span>
+                      </span>
+                      <button onClick={() => setGeo({ status: 'idle', coords: null })} className="shrink-0 px-1 py-2 text-[9.5px] uppercase tracking-[0.24em] underline underline-offset-4" style={{ color: ink(0.6) }}>Remove</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={shareLocation}
+                      disabled={geo.status === 'asking'}
+                      className="group relative isolate flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left disabled:cursor-wait"
+                      style={{ color: ink(0.85) }}
+                    >
+                      <Plate cut={8} fill="rgb(var(--sr-ink) / 0.02)" edge={ink(0.14)} edgeHi={ink(0.35)} />
+                      <span className={geo.status === 'asking' ? 'animate-pulse' : ''} style={{ color: 'rgb(var(--sr-neon))' }}><PinIcon /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10.5px] font-medium uppercase tracking-[0.22em]">
+                          {geo.status === 'asking' ? 'Finding you…' : 'Share my exact location'}
+                        </span>
+                        <span className="mt-1 block text-[10.5px] leading-[1.6] tracking-[0.04em]" style={{ color: ink(0.5) }}>
+                          {geo.status === 'denied'
+                            ? 'Location is off for this site. Type your area above, or allow location in your browser and try again.'
+                            : geo.status === 'unavailable'
+                              ? 'Your location couldn’t be found just now. Type your area above, or try again.'
+                              : 'Sent with your request as a map pin, so it reaches the right door. Your phone will ask first.'}
+                        </span>
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 <div data-or className="mt-8">
@@ -309,11 +393,18 @@ export default function OrderPanel({ open, product, size, onClose }) {
                     ? 'This exact message will open in WhatsApp, ready for you to send. Nothing is sent until you press send there.'
                     : `Instagram can’t receive a pre-filled message, so we’ll copy this for you. Paste it in your chat with @${INSTAGRAM} and send.`}
                 </p>
+                {/* what travels with the words: the piece's picture, and the pin if there is one */}
+                <div data-or className="mt-6 flex items-center gap-4 px-4 py-3" style={{ background: 'rgb(var(--sr-ink) / 0.025)', boxShadow: `inset 0 0 0 1px ${ink(0.08)}` }}>
+                  {order.productImage && <img src={order.productImage} alt="" className="h-14 w-12 shrink-0 object-contain" />}
+                  <p className="text-[10.5px] leading-[1.7]" style={{ color: ink(0.6) }}>
+                    The first link shows a photo of the {order.productName} in the chat{order.mapUrl ? ', and your map pin goes with it' : ''}.
+                  </p>
+                </div>
                 <pre
                   data-or
                   dir={ku ? 'rtl' : 'ltr'}
                   lang={ku ? 'ckb' : 'en'}
-                  className="mt-6 whitespace-pre-wrap px-5 py-5 font-sans text-[13px] leading-[1.75]"
+                  className="mt-4 whitespace-pre-wrap px-5 py-5 font-sans text-[13px] leading-[1.75]"
                   style={{ color: ink(0.92), background: 'rgb(var(--sr-ink) / 0.035)', boxShadow: `inset 0 0 0 1px ${ink(0.1)}`, textAlign: ku ? 'right' : 'left' }}
                 >
                   {message}

@@ -28,8 +28,8 @@ publicRouter.post('/orders', (req, res) => {
   if (existing) return res.json({ ref: existing.ref }) // the same request sent twice
   const fee = Number(publicSettings().deliveryFee) || 0
   db.prepare(`INSERT INTO orders (ref, product_id, product_number, product_name, size, price, delivery_fee, total,
-    customer_name, location, language, contact_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(o.ref, p.id, p.number, p.name, o.size, p.price, fee, p.price + fee, o.customerName, o.location, o.language, o.contactMethod)
+    customer_name, location, language, contact_method, coords) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(o.ref, p.id, p.number, p.name, o.size, p.price, fee, p.price + fee, o.customerName, o.location || 'Shared on the map', o.language, o.contactMethod, o.coords)
   res.status(201).json({ ref: o.ref })
 })
 

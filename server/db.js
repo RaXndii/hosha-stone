@@ -154,6 +154,10 @@ const MIGRATIONS = [
   ALTER TABLE products ADD COLUMN stage TEXT;
   UPDATE products SET stage = 'flip' WHERE slug = 'midnight-007m';
   `,
+  // where an order should go, when the customer chose to share it: "lat,lng,accuracy (m)"
+  `
+  ALTER TABLE orders ADD COLUMN coords TEXT;
+  `,
 ]
 
 const { user_version: version } = db.prepare('PRAGMA user_version').get()

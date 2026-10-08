@@ -31,7 +31,8 @@ app.use((req, res, next) => {
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'SAMEORIGIN',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    // location only for the site's own pages: the order form asks for it, with the customer's say-so
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self)',
   })
   if (req.path.startsWith('/api/admin') || req.path.startsWith('/admin')) res.set('Cache-Control', 'no-store')
   next()

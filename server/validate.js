@@ -105,6 +105,14 @@ export function validateProduct(body, { categoryExists, numberTaken, publishing 
   return out
 }
 
+/** A shared position → "lat,lng,accuracy" (5 decimals: about a metre), or null if it is not one. */
+function coordsOf(c) {
+  if (!c || typeof c !== 'object') return null
+  const lat = Number(c.lat), lng = Number(c.lng), acc = Number(c.accuracy)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
+  return `${lat.toFixed(5)},${lng.toFixed(5)},${Number.isFinite(acc) && acc >= 0 ? Math.round(Math.min(acc, 100000)) : ''}`
+}
+
 export function validateOrder(body) {
   const f = {}
   const out = {
@@ -115,12 +123,13 @@ export function validateOrder(body) {
     location: clean(body.location, 120),
     language: body.language === 'ku' ? 'ku' : 'en',
     contactMethod: body.contactMethod === 'instagram' ? 'instagram' : body.contactMethod === 'whatsapp' ? 'whatsapp' : null,
+    coords: coordsOf(body.coords),
   }
   if (!/^HS-[A-Z0-9]{5}$/.test(out.ref)) f.ref = 'invalid'
   if (!out.productId) f.productId = 'missing'
   if (!out.size) f.size = 'missing'
   if (out.customerName.length < 2) f.customerName = 'missing'
-  if (out.location.length < 2) f.location = 'missing'
+  if (out.location.length < 2 && !out.coords) f.location = 'missing'
   if (!out.contactMethod) f.contactMethod = 'missing'
   if (Object.keys(f).length) throw new HttpError(422, 'Order request incomplete.', f)
   return out

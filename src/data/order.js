@@ -30,10 +30,22 @@ const money = (n) => `$${Number.isInteger(n) ? n : n.toFixed(2)}`
 const ltr = (t) => `⁦${t}⁩`
 
 /**
+ * The piece's own page, as a full link. Put first in the message, WhatsApp and
+ * Instagram turn it into a picture of the piece — its front, lit in its own
+ * colours (the page's share card) — above the request: a site cannot attach a
+ * photograph to a pre-filled message, but the link brings one with it.
+ */
+export const pieceLink = (productId) => (typeof window !== 'undefined' && productId ? `${window.location.origin}/piece/${encodeURIComponent(productId)}` : null)
+
+/** A shared position, as a link that opens it as a pin on the map. */
+export const mapLink = (c) => (c ? `https://maps.google.com/?q=${c.lat.toFixed(5)},${c.lng.toFixed(5)}` : null)
+
+/**
  * The one order object every view and message reads from.
+ * coords: the customer's position, if they chose to share it ({ lat, lng, accuracy }).
  * Returns { order, errors } — errors keyed by field, empty when it can be sent.
  */
-export function buildOrder({ productId, size, customerName = '', location = '', language = 'en', contactMethod = null, ref = null }) {
+export function buildOrder({ productId, size, customerName = '', location = '', language = 'en', contactMethod = null, ref = null, coords = null }) {
   const product = PRODUCTS.find((p) => p.id === productId)
   const errors = {}
   if (!product || typeof product.price !== 'number') errors.product = 'unavailable'
@@ -41,7 +53,8 @@ export function buildOrder({ productId, size, customerName = '', location = '', 
   if (!size) errors.size = 'missing'
   else if (!s || !s.available) errors.size = 'unavailable'
   if (customerName.trim().length < 2) errors.customerName = 'missing'
-  if (location.trim().length < 2) errors.location = 'missing'
+  // a pin on the map is enough to deliver to; without one, words are needed
+  if (location.trim().length < 2 && !coords) errors.location = 'missing'
   if (!contactMethod) errors.contactMethod = 'missing'
 
   const price = product?.price ?? 0
@@ -56,6 +69,9 @@ export function buildOrder({ productId, size, customerName = '', location = '', 
     total: price + DELIVERY_FEE,
     customerName: customerName.trim(),
     location: location.trim(),
+    coords,
+    mapUrl: mapLink(coords),
+    pieceUrl: pieceLink(productId),
     language,
     contactMethod,
     ref,
@@ -68,9 +84,11 @@ export function orderMessage(o) {
   if (o.language === 'ku') {
     return [
       `داواکاریی ${BRAND}`,
+      ...(o.pieceUrl ? [`وێنە: ${o.pieceUrl}`] : []),
       '',
       `ناوی کڕیار: ${o.customerName}`,
-      `شوێن: ${o.location}`,
+      ...(o.location ? [`شوێن: ${o.location}`] : []),
+      ...(o.mapUrl ? [`نەخشە: ${o.mapUrl}`] : []),
       '',
       `داواکاری بۆ جلی ژمارە ${o.productNumber}`,
       `ناوی جل: ${o.productName}`,
@@ -84,9 +102,11 @@ export function orderMessage(o) {
   }
   return [
     `${BRAND} — Order request`,
+    ...(o.pieceUrl ? [`Photo: ${o.pieceUrl}`] : []),
     '',
     `Name: ${o.customerName}`,
-    `Location: ${o.location}`,
+    ...(o.location ? [`Location: ${o.location}`] : []),
+    ...(o.mapUrl ? [`Map: ${o.mapUrl}`] : []),
     '',
     `Piece: ${BRAND} / ${o.productNumber}`,
     `Product: ${o.productName}`,
@@ -120,7 +140,7 @@ export function recordOrder(o) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
-      body: JSON.stringify({ ref: o.ref, productId: o.productId, size: o.size, customerName: o.customerName, location: o.location, language: o.language, contactMethod: o.contactMethod }),
+      body: JSON.stringify({ ref: o.ref, productId: o.productId, size: o.size, customerName: o.customerName, location: o.location, coords: o.coords, language: o.language, contactMethod: o.contactMethod }),
     }).catch(() => {})
   } catch { /* the message still goes */ }
 }

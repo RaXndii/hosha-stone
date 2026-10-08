@@ -70,6 +70,10 @@ export default function Orders() {
                     ['Reference', o.ref],
                     ['Customer', o.customer_name],
                     ['Location', o.location],
+                    ...(o.coords ? [['Map', (() => {
+                      const [lat, lng, acc] = o.coords.split(',')
+                      return <a href={`https://www.google.com/maps?q=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4" style={{ color: C.ink }}>Open the pin{acc ? ` · within ${acc} m` : ''}</a>
+                    })()]] : []),
                     ['Via', o.contact_method === 'whatsapp' ? 'WhatsApp' : 'Instagram'],
                     ['Language', o.language === 'ku' ? 'Kurdish (Sorani)' : 'English'],
                     ['Price', money(o.price)],
