@@ -39,32 +39,62 @@ function Saved({ count, className = '', onOpen }) {
 }
 
 /**
- * The sound switch: four thin bars. They move while sound is playing, stand
- * still at half height when it is on but has not started (it starts at the
- * first touch), and lie flat when it is off.
+ * The music switch: four thin bars. They move while the music is playing,
+ * stand still at half height when it is on but has not started (it starts at
+ * the first touch), and lie flat when it is off. Turning it off quiets only
+ * the music: every touch keeps its sound. Turning it on brings sound back
+ * altogether if it was off.
  */
 export function SoundToggle({ className = '', label = false }) {
-  const { on, playing, toggle } = useSound()
+  const { on, music, playing, toggleMusic } = useSound()
+  const live = on && music
+  return (
+    <button
+      data-sound="none"
+      onClick={toggleMusic}
+      aria-pressed={live}
+      aria-label={live ? 'Music on — turn the music off (touch sounds stay)' : 'Music off — turn it on'}
+      title={live ? 'Music on' : 'Music off'}
+      className={`group items-center justify-center gap-3 transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] ${className}`}
+      style={{ color: live ? 'rgb(var(--sr-ink) / 0.85)' : 'rgb(var(--sr-ink) / 0.42)' }}
+    >
+      <span aria-hidden="true" className="flex h-[14px] w-[16.5px] items-end gap-[2.5px]">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={`sound-bar block h-full w-[2px] ${playing ? 'is-playing' : ''}`}
+            style={{ '--i': i, background: 'currentColor', transform: `scaleY(${live ? [0.45, 0.8, 0.6, 0.35][i] : 0.14})` }}
+          />
+        ))}
+      </span>
+      {label && <span className="text-[11px] uppercase tracking-[0.3em]">{live ? 'Music on' : 'Music off'}</span>}
+    </button>
+  )
+}
+
+/**
+ * The all-sound switch: a small speaker. Off, nothing on the site makes a
+ * sound — not the music, not a touch; on, everything comes back as it was.
+ */
+export function AllSoundToggle({ className = '', label = false }) {
+  const { on, toggle } = useSound()
   return (
     <button
       data-sound="none"
       onClick={toggle}
       aria-pressed={on}
-      aria-label={on ? 'Sound on — turn it off' : 'Sound off — turn it on'}
-      title={on ? 'Sound on' : 'Sound off'}
+      aria-label={on ? 'All sound on — silence everything' : 'All sound off — turn it on'}
+      title={on ? 'All sound on' : 'All sound off'}
       className={`group items-center justify-center gap-3 transition-colors duration-500 hover:text-[rgb(var(--sr-ink))] ${className}`}
       style={{ color: on ? 'rgb(var(--sr-ink) / 0.85)' : 'rgb(var(--sr-ink) / 0.42)' }}
     >
-      <span aria-hidden="true" className="flex h-[14px] items-end gap-[2.5px]">
-        {[0, 1, 2, 3].map((i) => (
-          <span
-            key={i}
-            className={`sound-bar block h-full w-[2px] ${playing ? 'is-playing' : ''}`}
-            style={{ '--i': i, background: 'currentColor', transform: `scaleY(${on ? [0.45, 0.8, 0.6, 0.35][i] : 0.14})` }}
-          />
-        ))}
-      </span>
-      {label && <span className="text-[11px] uppercase tracking-[0.3em]">{on ? 'Sound on' : 'Sound off'}</span>}
+      <svg viewBox="0 0 16 16" aria-hidden="true" className="h-[15px] w-[16.5px] shrink-0">
+        <path d="M2.5 6h2.6L8.6 3v10L5.1 10H2.5z" fill="currentColor" />
+        {on
+          ? <path d="M11 5.8a3.1 3.1 0 0 1 0 4.4M12.6 4.2a5.3 5.3 0 0 1 0 7.6" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+          : <path d="M10.8 6.1l3.4 3.8M14.2 6.1l-3.4 3.8" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" />}
+      </svg>
+      {label && <span className="text-[11px] uppercase tracking-[0.3em]">{on ? 'All sound on' : 'All sound off'}</span>}
     </button>
   )
 }
@@ -304,6 +334,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
       </nav>
 
       <div className="relative flex items-center gap-0.5 lg:gap-4">
+        {/* on a narrower desk the two give way to the nav; every order button leads to them anyway */}
         {[
           { label: 'Instagram', Icon: Instagram, href: `https://instagram.com/${INSTAGRAM}` },
           { label: 'WhatsApp', Icon: WhatsApp, href: `https://wa.me/${WHATSAPP}` },
@@ -317,7 +348,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
             rel="noreferrer"
             aria-label={label}
             title={label}
-            className="vx group hidden h-10 w-10 place-items-center transition-colors duration-300 lg:grid"
+            className="vx group hidden h-10 w-10 place-items-center transition-colors duration-300 xl:grid"
             style={{ color: 'rgb(var(--sr-ink) / 0.78)' }}
           >
             <Plate cut={11} edge="rgb(var(--sr-ink) / 0)" edgeHi="rgb(var(--sr-ink) / 0.3)" />
@@ -328,7 +359,10 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
         ))}
 
         <span data-intro className="hidden lg:inline-flex"><Saved count={saved} onOpen={() => onNav('saved')} className="inline-flex" /></span>
-        <span data-intro className="hidden lg:inline-flex"><SoundToggle className="flex h-10 w-10" /></span>
+        <span data-intro className="hidden lg:inline-flex">
+          <SoundToggle className="flex h-10 w-9" />
+          <AllSoundToggle className="flex h-10 w-8" />
+        </span>
 
         <span data-intro className="mx-1 hidden h-7 w-px lg:block" style={{ background: 'rgb(var(--sr-ink) / 0.4)' }} />
 
@@ -339,7 +373,7 @@ export default function Header({ onHome, onNav, onSearch, onMenu, active, catego
           data-sound="none"
           onClick={onSearch}
           aria-label="Search"
-          className="vx group relative hidden h-10 w-[104px] items-center justify-between rounded-sm px-1 lg:flex xl:w-[150px]"
+          className="vx group relative hidden h-10 w-[104px] items-center justify-between rounded-sm px-1 lg:flex 2xl:w-[150px]"
         >
           <span className="text-[10px] uppercase tracking-[0.26em] transition-colors duration-300" style={{ color: 'rgb(var(--sr-ink) / 0.45)' }}>
             Search

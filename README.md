@@ -158,13 +158,20 @@ pickup, but it is the house's own.
 - **Nothing plays until the visitor touches the page.** Browsers insist on
   it, and it is right. The first tap anywhere starts the music, which fades
   in over several seconds; it pauses whenever the tab is out of sight.
-- **The four bars in the header turn it off** (and on again); on a phone they
-  are also at the foot of the menu. The choice is remembered on the device.
+- **Two switches, both remembered on the device.** The four bars in the
+  header are the **music**: off, the soundtrack fades away (and the archive's
+  thunder with it) while every tap, size and heart keeps its sound; on, it
+  comes back over a few seconds. The small speaker beside them is **all
+  sound**: off, the site is silent. Pressing the bars while everything is off
+  brings everything back. On a phone both are at the foot of the menu (the
+  bars are in the header too).
 - **On a phone it behaves like a game, not a video.** It plays alongside the
   visitor's own music rather than stopping it, and a phone on silent stays
   silent.
-- **Each page has its music.** The showroom is warm (Dm9 · B♭maj7 · Fmaj9 ·
-  C6/9) and moves to a new key with each piece. The archive is dark — open
+- **Each page has its music, and it is calm.** Chords change slowly (every
+  12 to 16 seconds) and arrive slowly, the pads are dark and soft, and the
+  glass notes are few. The showroom is warm (Dm9 · B♭maj7 · Fmaj9 · C6/9)
+  and moves to a new key with each piece. The archive is dark — open
   fifths and wind — and thunder answers the lightning: from the side of the
   screen it struck, late if it was far off (a long roll), almost at once if
   it was close (a crack first). The Story is lighter, with plucked notes.
@@ -174,9 +181,9 @@ pickup, but it is the house's own.
   panels open and close, pieces swipe past, and the piece clicks as it turns
   under Look closer.
 - **Balanced, not loud.** Measured offline at the site's own mix: the music
-  sits near −25 dBFS, taps at −30 to −35, sizes and the heart near −22 to
-  −25, an order near −19, thunder near −17 — and one compressor over
-  everything, so nothing clips.
+  sits near −27 to −29 dBFS, taps at −30 to −35, sizes and the heart near
+  −22 to −25, an order near −19, thunder near −20 — and one
+  compressor over everything, so nothing clips.
 
 To change a control's sound, give it `data-sound="<name>"` (the names are
 `SOUNDS` in `src/lib/sound/recipes.js`), or `data-sound="none"` for silence.

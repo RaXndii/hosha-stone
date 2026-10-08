@@ -10,8 +10,9 @@ import { SOUNDS, makeKit, makeScore, mtof } from './recipes.js'
  * is out of sight, and on a phone it plays alongside the visitor's own music
  * instead of stopping it, and stays quiet when the phone is on silent.
  *
- * It is on unless the visitor turns it off (the bars in the header); the
- * choice is remembered on this device.
+ * Two switches, each remembered on this device: the music (the bars in the
+ * header), which can go quiet while every touch keeps its sound; and all
+ * sound (the speaker beside them), which silences everything.
  *
  * Every button and link taps (the listener at the bottom). A control whose
  * action has a sound of its own says so with data-sound="none" and plays that
@@ -24,7 +25,10 @@ import { SOUNDS, makeKit, makeScore, mtof } from './recipes.js'
  *   sound.hush(true)               a film is playing: the music steps aside
  */
 const KEY = 'hs-sound'
-const MUSIC = 0.42 // the score's level: under the touches, never over them
+const MUSIC_KEY = 'hs-music'
+const MUSIC = 0.32 // the score's level: well under the touches, a room's air rather than a song
+// sounds that belong to the room rather than to a touch: they go with the music
+const AMBIENT = new Set(['thunder'])
 const TOUCH = 0.9
 
 let ctx = null
@@ -39,14 +43,15 @@ let timer = 0
 let wanted = { scene: null, transpose: 0, brightness: 1 }
 let ducked = false
 let hushed = false
-let enabled = readPref()
+let enabled = readPref(KEY)
+let musicOn = readPref(MUSIC_KEY)
 const listeners = new Set()
 
-function readPref() {
-  try { return window.localStorage.getItem(KEY) !== 'off' } catch { return true }
+function readPref(key) {
+  try { return window.localStorage.getItem(key) !== 'off' } catch { return true }
 }
-function writePref(on) {
-  try { window.localStorage.setItem(KEY, on ? 'on' : 'off') } catch { /* private mode: for this visit only */ }
+function writePref(key, on) {
+  try { window.localStorage.setItem(key, on ? 'on' : 'off') } catch { /* private mode: for this visit only */ }
 }
 const emit = () => listeners.forEach((fn) => fn())
 
@@ -92,15 +97,21 @@ function build() {
   return true
 }
 
-function startMusic() {
-  if (!ctx || !wanted.scene) return
+function startMusic(fadeIn = 7) {
+  if (!ctx || !wanted.scene || !musicOn) return
   if (score?.scene === wanted.scene) return
   const at = ctx.currentTime
   score?.stop(at)
   score = makeScore(ctx, musicBus, kit, wanted.scene, wanted)
   score.scene = wanted.scene
-  score.fade(1, 7, at)
+  score.fade(1, fadeIn, at)
   score.schedule(at + 2.5)
+}
+
+function stopMusic() {
+  if (!ctx || !score) return
+  score.stop(ctx.currentTime)
+  score = null
 }
 
 function run() {
@@ -181,10 +192,12 @@ function level(time) {
 
 export const sound = {
   get on() { return enabled },
-  get playing() { return enabled && ctx?.state === 'running' },
+  get music() { return musicOn },
+  get playing() { return enabled && musicOn && !!score && ctx?.state === 'running' },
 
   play(name, opts = {}) {
     if (!enabled || !ctx || !SOUNDS[name]) return
+    if (AMBIENT.has(name) && !musicOn) return
     try {
       SOUNDS[name](ctx, touchBus, ctx.currentTime + 0.005, tune(name, opts), kit)
     } catch { /* a sound that cannot be made is not worth an error */ }
@@ -219,12 +232,32 @@ export const sound = {
     level(on ? 0.25 : 0.9)
   },
 
+  /** The music alone: off, and every touch still sounds; on, and it comes back over a few seconds. */
+  setMusic(on) {
+    musicOn = on
+    writePref(MUSIC_KEY, on)
+    if (on && !enabled) { sound.set(true); return }
+    if (ctx && enabled) {
+      if (on) {
+        startMusic(3)
+        window.setTimeout(() => sound.play('bloom'), 80)
+      } else {
+        stopMusic()
+        sound.play('soft')
+      }
+    }
+    emit()
+  },
+
+  toggleMusic() { sound.setMusic(!(enabled && musicOn)) },
+
   set(on) {
     enabled = on
-    writePref(on)
+    writePref(KEY, on)
     emit()
     if (on) {
       unlock()
+      emit()
       // a moment after waking, so the chord is heard rather than lost in the start
       window.setTimeout(() => sound.play('bloom'), 80)
     } else if (ctx) {
@@ -243,11 +276,12 @@ export const sound = {
   },
 }
 
-/** The sound switch's state, for React: whether it is on, and whether sound is moving yet. */
+/** The switches' state, for React: all sound, the music, and whether the music is moving yet. */
 export function useSound() {
   const on = useSyncExternalStore(sound.subscribe, () => enabled, () => true)
+  const music = useSyncExternalStore(sound.subscribe, () => musicOn, () => true)
   const playing = useSyncExternalStore(sound.subscribe, () => sound.playing, () => false)
-  return { on, playing, toggle: sound.toggle }
+  return { on, music, playing, toggle: sound.toggle, toggleMusic: sound.toggleMusic }
 }
 
 /* ------------------------------------------------------------------ the listeners */

@@ -307,7 +307,7 @@ button {
   transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .sound-bar.is-playing {
-  animation: sound-bar calc(0.82s + var(--i) * 0.19s) ease-in-out infinite alternate;
+  animation: sound-bar calc(1.3s + var(--i) * 0.27s) ease-in-out infinite alternate;
   animation-delay: calc(var(--i) * -0.31s);
 }
 @keyframes sound-bar {

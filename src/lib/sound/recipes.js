@@ -439,7 +439,7 @@ export function thunder(ac, out, t, o = {}, kit) {
   const at = t + 0.25 + d * 1.4
   const pan = ac.createStereoPanner()
   pan.pan.value = clamp(o.pan ?? 0, -0.9, 0.9)
-  const bus = gainNode(ac, (o.gain ?? 0.72) * (1 - d * 0.35))
+  const bus = gainNode(ac, (o.gain ?? 0.5) * (1 - d * 0.35))
   bus.connect(pan).connect(out)
   send(ac, bus, kit, 0.28)
 
@@ -541,9 +541,11 @@ const PROGRESSIONS = {
   ],
 }
 const SCENE = {
-  room: { chord: 10, attack: 3.2, release: 4.5, cutoff: 1150, pad: 0.05, bass: 0.07, glint: [2.6, 6], plucks: false, wind: 0 },
-  archive: { chord: 13, attack: 4.5, release: 6, cutoff: 640, pad: 0.039, bass: 0.078, glint: [5, 11], plucks: false, wind: 0.05 },
-  story: { chord: 9, attack: 2.6, release: 4, cutoff: 1500, pad: 0.04, bass: 0.055, glint: [3.5, 8], plucks: true, wind: 0 },
+  // calm by design: chords that change slowly and arrive slowly, a darker
+  // pad, and the glass notes few and far between
+  room: { chord: 13, attack: 4.6, release: 6.5, cutoff: 880, pad: 0.05, bass: 0.06, glint: [6, 13], plucks: false, wind: 0 },
+  archive: { chord: 16, attack: 5.5, release: 7.5, cutoff: 560, pad: 0.039, bass: 0.07, glint: [9, 18], plucks: false, wind: 0.032 },
+  story: { chord: 12, attack: 3.8, release: 5.5, cutoff: 1100, pad: 0.04, bass: 0.05, glint: [6, 13], plucks: true, wind: 0 },
 }
 
 /**
@@ -573,7 +575,7 @@ function padVoice(ac, dest, t, midi, s, { cutoff, gain, pan, until }) {
   // the filter breathes, slowly, at its own rate per voice
   const lfo = ac.createOscillator()
   lfo.frequency.value = rand(0.04, 0.09)
-  const lfoDepth = gainNode(ac, cutoff * 0.28)
+  const lfoDepth = gainNode(ac, cutoff * 0.2)
   lfo.connect(lfoDepth).connect(lp.frequency)
   const amp = gainNode(ac, 0)
   amp.gain.setValueAtTime(0, t)
@@ -715,7 +717,7 @@ export function makeScore(ac, out, kit, scene, { transpose = 0, brightness = 1 }
     const g = gainNode(ac, 1)
     g.connect(bus)
     send(ac, g, kit, 0.9)
-    bell(ac, g, t, mtof(Math.min(m, 96)), { dur: rand(2, 3.2), ratio: pick([1, 2, 3.5]), index: rand(0.4, 1), gain: rand(0.012, 0.024), attack: 0.02 })
+    bell(ac, g, t, mtof(Math.min(m, 91)), { dur: rand(2.4, 3.6), ratio: pick([1, 2]), index: rand(0.3, 0.7), gain: rand(0.009, 0.017), attack: 0.03 })
   }
 
   const pluck = (t) => {
@@ -726,10 +728,10 @@ export function makeScore(ac, out, kit, scene, { transpose = 0, brightness = 1 }
     o.frequency.value = mtof(m)
     const lp = ac.createBiquadFilter()
     lp.type = 'lowpass'
-    lp.frequency.setValueAtTime(3200, t)
+    lp.frequency.setValueAtTime(2200, t)
     lp.frequency.exponentialRampToValueAtTime(700, t + 0.8)
     const g = gainNode(ac, 0)
-    strike(g.gain, t, rand(0.025, 0.045), 0.004, rand(1, 1.6))
+    strike(g.gain, t, rand(0.018, 0.03), 0.006, rand(1.2, 1.8))
     o.connect(lp).connect(g).connect(bus)
     send(ac, g, kit, 0.4)
     o.start(t)
@@ -751,8 +753,8 @@ export function makeScore(ac, out, kit, scene, { transpose = 0, brightness = 1 }
       while (nextGlint < until) { glint(nextGlint); nextGlint += rand(...s.glint) }
       if (s.plucks) {
         while (nextPluck < until) {
-          if (Math.random() < 0.62) pluck(nextPluck)
-          nextPluck += pick([0.48, 0.52, 0.56, 0.72, 0.96])
+          if (Math.random() < 0.4) pluck(nextPluck)
+          nextPluck += pick([0.9, 1.1, 1.3, 1.6])
         }
       }
     },

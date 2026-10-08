@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { CATEGORIES, PRODUCTS, countIn, themeVars } from '../../data/showroom.js'
-import { Glass, PlusMinus, SoundToggle } from './Header.jsx'
+import { AllSoundToggle, Glass, PlusMinus, SoundToggle } from './Header.jsx'
 import { INSTAGRAM, WHATSAPP } from '../../data/order.js'
 import { sound } from '../../lib/sound/index.js'
 
@@ -247,7 +247,10 @@ export function MobileMenu({ open, onClose, onNav, category, onCategory }) {
             </div>
           ))}
         </nav>
-        <SoundToggle label className="mt-auto flex h-11 justify-start self-start pt-10" />
+        <div className="mt-auto flex flex-col pt-10">
+          <SoundToggle label className="flex h-11 justify-start self-start" />
+          <AllSoundToggle label className="flex h-11 justify-start self-start" />
+        </div>
         <div className="flex gap-8 pt-2 text-[11px] uppercase tracking-[0.3em]" style={{ color: 'rgb(var(--sr-ink) / 0.65)' }}>
           <a className="flex h-11 items-center" href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer">WhatsApp</a>
           <a className="flex h-11 items-center" href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noreferrer">Instagram</a>
