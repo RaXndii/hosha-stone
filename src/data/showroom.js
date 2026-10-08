@@ -13,7 +13,7 @@ import { STATIC_CATEGORIES, STATIC_PRODUCTS, STATIC_STORY } from './static-catal
  * live in /thumb under the same name (scripts/thumbs.mjs). Filled in here for
  * any piece that does not say.
  */
-const thumbOf = (src) => (/^\/[\w.-]+\.webp$/.test(src ?? '') ? `/thumb${src}` : src)
+const thumbOf = (src) => (/^\.?\/[\w.-]+\.webp$/.test(src ?? '') ? src.replace(/^(\.?\/)/, '$1thumb/') : src)
 const withThumbs = (list) =>
   list.map((p) => ({
     ...p,

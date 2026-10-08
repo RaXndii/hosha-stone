@@ -64,19 +64,71 @@ is designed for rather than shrunk to:
   let go past the line, or flick it, and the next piece is brought in; let go
   short and it swings back. The marks on the plinth's face show where you are
   in the set, and can be tapped.
+- **The first screen is composed above the buy bar**, which is always
+  there: the room, the piece, its plinth and its name are proportioned to
+  the height the bar leaves, so *Look closer* is never under it (checked on
+  phones from an iPhone SE to a 14 Pro Max), and the price and sizes on the
+  page begin just below it.
 - **Every control is at least 44 px**, the smallest labels are lifted a step
-  below desk width, and the archive is two pieces to a row.
+  below desk width, and the archive is two pieces to a row. Typing in the
+  order form never zooms the page (its fields are 16 px on a phone), a tap
+  never waits to see whether it is a double tap, and a long press on the
+  piece does not offer to save the photograph.
 - **The browser's bar takes the room's colour**, piece by piece.
 - **Notches and home indicators are cleared** everywhere something meets the
   edge of the screen, turned either way.
 
-What it costs a phone to arrive: on Lighthouse's mobile profile (slow 4G, a
-CPU four times slower than a desk) a shared link shows its piece in about
-2.6 s. Responses are compressed (Brotli or gzip), the two typefaces are served
-from the site itself, the page arrives with the catalogue already in it, the
-photograph it opens on is asked for before any script runs, and only the
-pieces a swipe can reach next are fetched ahead — none at all with Data Saver
-on.
+### Fast on a phone
+
+Measured with a phone's profile — a slow 4G connection (1.6 Mbps, 150 ms)
+and a CPU four times slower than a desk:
+
+| | before | now |
+| --- | --- | --- |
+| Front door: first thing on screen | 4.7 s | 1.4 s |
+| A shared link to a piece: the piece showing | 3.8 s | about 3 s |
+| A second visit: first thing on screen | — | 0.8 s |
+| The showroom left alone: the phone's processor | busy all the time | ~1% |
+| What the front door downloads | 859 KB | 471 KB |
+| The archive | 746 KB | 342 KB |
+
+What made the difference, so it stays that way:
+
+- **Nothing runs while nothing moves.** The room's light used to be a frame
+  loop that rewrote the whole showroom's styles sixty times a second; it now
+  drifts on the graphics chip (`src/hooks/usePointerField.js`), and the
+  phone's processor sleeps. The house lights, the vignette and the loupe
+  animate one element each, never the whole page; the story's motion runs
+  only on the frames after the page has scrolled (`src/lib/scroll.js`).
+- **Changing piece restyles the page once, in the dark.** On a phone the
+  room takes the new piece's colours at once, at full dark, with transitions
+  held off for that moment (`relightNow` in `Showroom.jsx`).
+- **The opening is drawn by the page itself** (`index.html`): it starts the
+  moment the page arrives and the script loads while it plays.
+- **Only the first screen's script is waited for** (217 KB, was 330): the
+  closer look, the order request, the archive and the story are separate
+  and fetched once the page is up. Closed panels are built in spare time
+  and *rest* — the browser skips them entirely (`src/lib/rest.js`).
+- **Small things are drawn from small copies.** Every photograph has a 480 px
+  copy (`public/thumb/`, made by `npm run thumbs`, which the build runs);
+  cards, the closer look's strip and search use those.
+- **The phone keeps copies.** A service worker (`public/sw.js`) keeps the
+  scripts, fonts and photographs, so a second visit opens from the phone and
+  the site opens with no network at all. Pages are always fetched fresh, so a
+  price or a sold-out size is never stale; the admin, the API and films are
+  never kept.
+- **Sent as small as it gets.** Scripts and styles are compressed once at
+  build time, Brotli at its strongest (`scripts/compress.mjs`), photographs
+  are served from the phone's cache while they are checked, and a link to
+  the archive or the story has that page's script fetched with the HTML. The
+  two typefaces are served from the site itself, the page arrives with the
+  catalogue already in it, the photograph it opens on is asked for before
+  any script runs, and only the pieces a swipe can reach next are fetched
+  ahead — none at all with Data Saver on.
+- **The graphics chip is spared too.** The buy bar's frosted glass is drawn
+  only on iPhones (iOS does it for next to nothing; elsewhere it is solid),
+  the film grain holds still on phones, and no layer is larger than what it
+  draws.
 
 ## Ordering
 
@@ -203,9 +255,25 @@ pickup, but it is the house's own.
   sound**: off, the site is silent. Pressing the bars while everything is off
   brings everything back. On a phone both are at the foot of the menu (the
   bars are in the header too).
-- **On a phone it behaves like a game, not a video.** It plays alongside the
-  visitor's own music rather than stopping it, and a phone on silent stays
-  silent.
+- **On a phone, the music plays like a film.** An iPhone silences a page's
+  sound outright when its ring/silent switch is on silent — where most
+  iPhones live — unless the page says its sound is playback. While the music
+  is on, it does (`navigator.audioSession`, or on iPhones before iOS 17 a
+  silent media element playing alongside), so the house is heard at the
+  volume the buttons set, and, as with a film, the visitor's own music
+  pauses. With the music switched off, the touches alone go back to
+  following the switch and play over the visitor's own music, the way the
+  phone's own keyboard clicks do.
+- **Voiced for a phone's speaker.** A phone plays almost nothing under
+  300 Hz, and the music's low note is near 70. On a phone the low note
+  carries its overtones (the ear hears the bass line in them), the pads open
+  a little, and each page's music is raised so that, through a model of a
+  phone's speaker, it stands against the touches as it does on a desk
+  (music 7–8.5 dB over a tap, where it had fallen to 0–3 dB, and below the
+  taps in the archive).
+- **The first touch answers at once.** The sound is made in the visitor's
+  first touch; the costly part, the room's reverb, is hung a few seconds
+  later, once their hands are still.
 - **Each page has its music, and it is calm.** Chords change slowly (every
   12 to 16 seconds) and arrive slowly, the pads are dark and soft, and the
   glass notes are few. The showroom is warm (Dm9 · B♭maj7 · Fmaj9 · C6/9)
@@ -278,6 +346,9 @@ The server also answers `/robots.txt` and `/sitemap.xml`, and writes
 | Music and sounds (made in the browser) | `src/lib/sound/` |
 | The cut-stone shapes | `src/index.css` ("CUT STONE"), `src/components/ui/Plate.jsx`, `Loupe.jsx` |
 | Icons for the tab and a phone's home screen | `public/favicon.svg`, `public/*icon*.png` |
+| Small copies of the bundled photographs | `public/thumb/` (`npm run thumbs`) |
+| What a phone keeps for next time | `public/sw.js` |
+| Build steps after Vite (compressed copies) | `scripts/compress.mjs` |
 | Admin app | `admin/index.html`, `src/admin/` |
 | Customer site | `index.html`, `src/` |
 
@@ -304,6 +375,10 @@ flat, typed in centimetres or inches; customers can read them in either.
 Any host that runs Node and keeps a persistent disk (Render, Railway, Fly, a VPS):
 
 - build command `npm install && npm run build`, start command `npm start`
+  (the build also makes the photographs' small copies and the compressed
+  scripts; after replacing a photograph in `public/`, build again)
+- the service worker needs HTTPS (or localhost); a new deploy reaches a
+  visitor on their next visit — pages are always fetched fresh
 - mount a persistent disk and set `HS_STORAGE` to it
 - set `NODE_ENV=production` (secure cookies) and, behind a proxy, `TRUST_PROXY=true`
 - serve over HTTPS

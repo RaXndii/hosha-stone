@@ -1,3 +1,5 @@
+import plugin from 'tailwindcss/plugin'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './admin/index.html', './src/**/*.{js,jsx}'],
@@ -9,11 +11,6 @@ export default {
   experimental: { optimizeUniversalDefaults: true },
   theme: {
     extend: {
-      // a phone whose screen is short (an iPhone SE): the title tightens so
-      // the way in to the photographs stays above the buy bar
-      screens: {
-        short: { raw: '(max-height: 620px) and (max-width: 1023px)' },
-      },
       colors: {
         night: '#05041a',
         abyss: '#03020d',
@@ -34,5 +31,11 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // short: a phone whose screen is short (an iPhone SE) — the title tightens
+    // so the way in to the photographs stays above the buy bar. A variant of
+    // its own rather than a screen: an object among the screens would turn
+    // off Tailwind's max-[…] variants, which the header relies on
+    plugin(({ addVariant }) => addVariant('short', '@media (max-height: 620px) and (max-width: 1023px)')),
+  ],
 }
