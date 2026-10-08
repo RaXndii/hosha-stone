@@ -2,97 +2,134 @@ import { useEffect } from 'react'
 
 const clamp = (v, min, max) => (v < min ? min : v > max ? max : v)
 
-/**
- * Drives the scene's light as a physical body rather than a cursor follower:
- * the pointer sets a target, the light eases toward it with its own inertia and
- * never quite arrives. Everything downstream reads the CSS variables written
- * here, so no component re-renders on pointer movement.
- *
- * --lx / --ly   light position, 0-1 across the stage
- * --dx / --dy   signed offset from centre, -1..1, for layer parallax
- * --near        0-1 proximity of the light to the garment
+/*
+ * The light's own path when no one is reaching for it: a slow figure across
+ * the stage. Across, it goes round five times while it rises and falls three,
+ * so the figure closes on itself after PERIOD and can loop without a seam.
  */
-export default function usePointerField(stageRef, { anchor = [0.6, 0.54], zoneRef } = {}) {
+const RATE = 0.15 // radians a second
+const LOOP = 10 * Math.PI
+const PERIOD = (LOOP / RATE) * 1000 // ms, about three and a half minutes
+const pathAt = (phase) => ({ x: 0.5 + Math.sin(phase) * 0.26, y: 0.46 + Math.cos(phase * 0.6) * 0.1 })
+
+/*
+ * What the light moves. Its glow is twice the stage's size, so a quarter of
+ * its own width is half the stage's; the reflection in the glass slides the
+ * other way, a tenth of its width from one edge of the stage to the other.
+ */
+const glow = (x, y) => `translate3d(${((x - 0.5) * 50).toFixed(3)}%, ${((y - 0.5) * 50).toFixed(3)}%, 0)`
+const glint = (x) => `translate3d(${((x * 2 - 1) * -10).toFixed(3)}%, 0, 0)`
+const STEPS = 240
+const frames = (draw) => Array.from({ length: STEPS + 1 }, (_, i) => ({ transform: draw(pathAt((i / STEPS) * LOOP)) }))
+
+/**
+ * The room's light, moving as a body rather than a cursor follower.
+ *
+ * Left alone it drifts on its own path, so the scene is never inert — and the
+ * drift is handed whole to the compositor: the two things it moves (the glow,
+ * [data-field="light"], and its reflection in the glass, [data-field="glass"])
+ * are animated off the main thread, so a phone does nothing at all to keep the
+ * room alive. (It used to be a frame loop writing the light's position into
+ * the whole showroom's styles: every frame, every element on the page was
+ * restyled for two of them to move. On a phone that was the room's entire
+ * budget, all the time.)
+ *
+ * With a mouse, inside the zone, the light leaves its path for the pointer
+ * with its own inertia, never quite arriving, and once the pointer has been
+ * still or gone for a while it takes the path up again from where it is. That
+ * takes a frame loop, so one runs only then. On a touch screen a finger on the
+ * stage is swiping or pressing, and the light keeps its own path.
+ */
+export default function usePointerField(rootRef, { zoneRef } = {}) {
   useEffect(() => {
-    const stage = stageRef.current
-    if (!stage) return
+    const root = rootRef.current
+    const light = root?.querySelector('[data-field="light"]')
+    const glass = root?.querySelector('[data-field="glass"]')
+    if (!light || !glass || !light.animate) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const coarse = window.matchMedia('(pointer: coarse)').matches
-
-    const state = { x: 0.5, y: 0.45, tx: 0.5, ty: 0.45 }
-    let lastInput = 0
-    let phase = Math.PI * 0.5
-    let raf = 0
-
-    const setTarget = (clientX, clientY) => {
-      const rect = stage.getBoundingClientRect()
-      if (!rect.width || !rect.height) return
-      state.tx = clamp((clientX - rect.left) / rect.width, -0.2, 1.2)
-      state.ty = clamp((clientY - rect.top) / rect.height, -0.2, 1.2)
-      lastInput = performance.now()
+    // the path's own clock; moved when the light rejoins it somewhere else
+    let t0 = performance.now()
+    const timing = { duration: PERIOD, iterations: Infinity }
+    const drift = [light.animate(frames((p) => glow(p.x, p.y)), timing), glass.animate(frames((p) => glint(p.x)), timing)]
+    const pathNow = (now) => pathAt((((now - t0) % PERIOD) / 1000) * RATE)
+    const rejoin = (now) => {
+      for (const a of drift) {
+        a.currentTime = (now - t0) % PERIOD
+        a.play()
+      }
+      light.style.transform = ''
+      glass.style.transform = ''
     }
 
-    // with a zone, the light only answers the visitor inside it; elsewhere it
-    // goes back to drifting on its own
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return () => drift.forEach((a) => a.cancel())
+
+    const s = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5, last: 0, raf: 0, held: false, following: false }
+    // the drift is picked up from where the light is now, not from a jump
+    const rephase = (now) => {
+      const phase = Math.asin(clamp((s.x - 0.5) / 0.26, -1, 1))
+      t0 = now - (phase / RATE) * 1000
+    }
+
+    const tick = () => {
+      const now = performance.now()
+      const following = now - s.last < 2200
+      if (s.following && !following) rephase(now)
+      s.following = following
+      if (!following) {
+        const p = pathNow(now)
+        s.tx = p.x
+        s.ty = p.y
+      }
+      // inertia: the light lags the pointer and settles, it does not track it
+      s.x += (s.tx - s.x) * 0.045
+      s.y += (s.ty - s.y) * 0.045
+      if (!following && Math.abs(s.x - s.tx) < 0.0015 && Math.abs(s.y - s.ty) < 0.0015) {
+        // back on its path: the compositor has it again
+        s.held = false
+        s.raf = 0
+        rejoin(now)
+        return
+      }
+      light.style.transform = glow(s.x, s.y)
+      glass.style.transform = glint(s.x)
+      s.raf = requestAnimationFrame(tick)
+    }
+
+    // with a zone, the light only answers the visitor inside it
     const within = (x, y) => {
       const zone = zoneRef?.current
       if (!zone) return true
       const r = zone.getBoundingClientRect()
       return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom
     }
-    const follow = (x, y) => {
-      if (within(x, y)) setTarget(x, y)
-      else if (lastInput) {
-        lastInput = 0
-        // pick the drift up from where the light is now, not from a jump
-        phase = Math.asin(clamp((state.x - 0.5) / 0.26, -1, 1))
+    const onMove = (e) => {
+      const now = performance.now()
+      if (!within(e.clientX, e.clientY)) {
+        s.last = 0
+        return
       }
-    }
-    const onPointerMove = (e) => follow(e.clientX, e.clientY)
-    const onTouch = (e) => {
-      const t = e.touches[0]
-      if (t) follow(t.clientX, t.clientY)
-    }
-
-    if (coarse) {
-      window.addEventListener('touchstart', onTouch, { passive: true })
-      window.addEventListener('touchmove', onTouch, { passive: true })
-    } else {
-      window.addEventListener('pointermove', onPointerMove, { passive: true })
-    }
-
-    const tick = () => {
-      // with no recent input the light keeps drifting, so the scene is never inert
-      if (performance.now() - lastInput > 2200) {
-        phase += 0.0025
-        state.tx = 0.5 + Math.sin(phase) * 0.26
-        state.ty = 0.46 + Math.cos(phase * 0.62) * 0.1
+      const rect = root.getBoundingClientRect()
+      if (!rect.width || !rect.height) return
+      if (!s.held) {
+        // taken off the path where the compositor has it now
+        const p = pathNow(now)
+        s.x = p.x
+        s.y = p.y
+        s.held = true
+        for (const a of drift) a.cancel()
       }
-
-      // inertia: the light lags the pointer and settles, it does not track it
-      state.x += (state.tx - state.x) * 0.045
-      state.y += (state.ty - state.y) * 0.045
-
-      const dist = Math.hypot(state.x - anchor[0], (state.y - anchor[1]) * 0.85)
-      const near = clamp(1 - dist / 0.46, 0, 1)
-
-      stage.style.setProperty('--lx', state.x.toFixed(4))
-      stage.style.setProperty('--ly', state.y.toFixed(4))
-      stage.style.setProperty('--dx', (state.x * 2 - 1).toFixed(4))
-      stage.style.setProperty('--dy', (state.y * 2 - 1).toFixed(4))
-      stage.style.setProperty('--near', near.toFixed(4))
-
-      raf = requestAnimationFrame(tick)
+      s.tx = clamp((e.clientX - rect.left) / rect.width, -0.2, 1.2)
+      s.ty = clamp((e.clientY - rect.top) / rect.height, -0.2, 1.2)
+      s.last = now
+      if (!s.raf) s.raf = requestAnimationFrame(tick)
     }
 
-    if (!reduced) raf = requestAnimationFrame(tick)
-
+    window.addEventListener('pointermove', onMove, { passive: true })
     return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('touchstart', onTouch)
-      window.removeEventListener('touchmove', onTouch)
+      cancelAnimationFrame(s.raf)
+      window.removeEventListener('pointermove', onMove)
+      drift.forEach((a) => a.cancel())
     }
-  }, [stageRef, anchor, zoneRef])
+  }, [rootRef, zoneRef])
 }

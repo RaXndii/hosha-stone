@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
-import { ABOUT, PRODUCTS, inCategory, themeVars, turnViews } from '../../data/showroom.js'
+import { PRODUCTS, inCategory, themeVars, turnViews } from '../../data/showroom.js'
 import usePointerField from '../../hooks/usePointerField.js'
 import useSpotlight from '../../hooks/useSpotlight.js'
 import useShowcase from '../../hooks/useShowcase.js'
@@ -8,9 +8,7 @@ import { SceneBack, SceneFront, HouseLights } from './Scene.jsx'
 import Header from './Header.jsx'
 import { NextPiece, Pager, Purchase, Title } from './Info.jsx'
 import { MobileMenu, SearchSheet } from './Overlays.jsx'
-import Closer from './Closer.jsx'
-import { frameSrc, prefersLargeFrames } from './Turntable.jsx'
-import OrderPanel from './OrderPanel.jsx'
+import { frameSrc, prefersLargeFrames } from './frames.js'
 import SizeGuide from './SizeGuide.jsx'
 import BuyBar, { CloserBar, SizeSheet } from './BuyBar.jsx'
 import Film from './Film.jsx'
@@ -22,8 +20,36 @@ import { useShop } from '../../lib/shop.jsx'
 import Plate from '../ui/Plate.jsx'
 import Loupe from '../ui/Loupe.jsx'
 
-const LIGHT_ANCHOR = [0.5, 0.46]
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const coarse = () => window.matchMedia('(pointer: coarse)').matches
+
+/**
+ * The room in another piece's colours, at once (a phone's change of piece,
+ * at full dark). The whole page is restyled once, with its transitions held
+ * off: a control whose colour eases on hover would otherwise take the new
+ * colour as a cue to ease into it, and dozens easing at once is what made a
+ * phone stutter. They are let go again as the new piece is set (taking them
+ * back is a restyle of the whole page too, so it is made with that one).
+ */
+function relightNow(root, theme) {
+  root.classList.add('relighting')
+  // written straight onto the room: an animation library setting them would
+  // first read the page's current styles, which is a whole restyle of its own
+  for (const [k, v] of Object.entries(themeVars(theme))) root.style.setProperty(k, v)
+  void root.offsetWidth
+}
+
+/*
+ * The closer look and the order request are a third of the showroom's script,
+ * and neither is on its first screen. A phone would read and compile all of it
+ * before showing the room, so they come separately: fetched once the room is
+ * lit (or the moment a hand heads for "Look closer"), and put on the page the
+ * first time they are asked for.
+ */
+const loadCloser = () => import('./Closer.jsx')
+const loadOrder = () => import('./OrderPanel.jsx')
+const Closer = lazy(loadCloser)
+const OrderPanel = lazy(loadOrder)
 
 /**
  * Whether the house has already said its name to this visitor. The opening is
@@ -37,6 +63,35 @@ const introduced = () => {
 }
 const markIntroduced = () => {
   try { window.sessionStorage.setItem(OPENED, '1') } catch { /* private mode: it plays again, harmlessly */ }
+}
+
+/**
+ * The opening — the house's name in the dark — is drawn by the page itself
+ * (index.html, #hs-opening), so it is already playing while this script is
+ * still on its way, and on a phone that is most of the wait. The first
+ * showroom to start takes it over: it lets it finish its entrance from
+ * wherever it has got to, sees it out, and the room comes up behind it. If it
+ * is not wanted (a second visit, a link to a piece, the archive, less motion)
+ * it is simply removed. Once only: it never comes back in this visit.
+ * → when it will have gone (ms, on the page's clock)
+ */
+let openingGone = null
+function takeOpening(play) {
+  if (openingGone != null) return openingGone
+  const el = document.getElementById('hs-opening')
+  if (!el || !play || document.documentElement.classList.contains('hs-quiet')) {
+    el?.remove()
+    openingGone = 0
+    return openingGone
+  }
+  // how far into its entrance it already is: it began with the page
+  const played = (el.querySelector('.o-name span')?.getAnimations?.()[0]?.currentTime ?? 0) / 1000
+  const leave = Math.max(0.15, 2.05 - played)
+  const out = gsap.timeline({ delay: leave, onComplete: () => el.remove() })
+  out.to(el.children, { opacity: 0, y: -14, duration: 0.7, ease: 'power2.in', stagger: 0.05 }, 0)
+  out.to(el, { autoAlpha: 0, duration: 0.9, ease: 'power2.inOut' }, 0.25)
+  openingGone = performance.now() + leave * 1000
+  return openingGone
 }
 
 /** Resolve once the piece's image can be painted — never hold the set for long. */
@@ -87,14 +142,16 @@ export default function Showroom({ initialId, entry }) {
   const sheetFrom = useRef(null)
   // the room is lit: until then the bar would sit over the house's entrance
   const [lit, setLit] = useState(false)
+  // whether the closer look and the order request have been asked for yet (see loadCloser)
+  const [closerUsed, setCloserUsed] = useState(false)
+  const [orderUsed, setOrderUsed] = useState(false)
+  const order = useCallback(() => { setOrderUsed(true); setOrdering(true) }, [])
   const purchaseRef = useRef(null)
 
   // the room's colours are owned by GSAP after the first paint: these values
   // never change between renders, so React never writes over a tween
   const [initialVars] = useState(() => ({
     ...themeVars(first.theme),
-    '--sr-dim': 1,
-    '--sr-focus': 0,
     '--vx-a': 'var(--sr-neon)',
     '--vx-b': 'var(--sr-light)',
     '--drawer-bg': 'rgb(var(--sr-bg0) / 0.97)',
@@ -116,7 +173,7 @@ export default function Showroom({ initialId, entry }) {
   const queued = useRef(null)
 
   // the light, the ring and the piece's depth belong to the piece alone
-  usePointerField(rootRef, { anchor: LIGHT_ANCHOR, zoneRef: stageRef })
+  usePointerField(rootRef, { zoneRef: stageRef })
   useSpotlight(rootRef)
   useShowcase({ zoneRef: stageRef, cursorRef, parallaxRef, enabled: !closer && !overlay && !ordering && !guide && !sizeSheet })
 
@@ -146,17 +203,17 @@ export default function Showroom({ initialId, entry }) {
     const ctx = gsap.context(() => {
       const q = gsap.utils.selector(root)
       if (reducedMotion()) {
-        gsap.set(root, { '--sr-dim': 0 })
-        gsap.set(q('[data-opening]'), { autoAlpha: 0 })
+        takeOpening(false)
+        gsap.set(q('[data-house-lights]'), { opacity: 0 })
         setLit(true)
         return
       }
       if (arrival.current === 'browse') {
         // carried in from the archive: the piece is already where it belongs;
         // the lights come up and the room assembles around it
-        gsap.set(q('[data-opening]'), { autoAlpha: 0 })
+        takeOpening(false)
         const tl = gsap.timeline({ delay: 0.05 })
-        tl.to(root, { '--sr-dim': 0, duration: 1.5, ease: 'power2.out' }, 0)
+        tl.to(q('[data-house-lights]'), { opacity: 0, duration: 1.5, ease: 'power2.out' }, 0)
         tl.fromTo(q('[data-neon-line]'), { scaleY: 0 }, { scaleY: 1, duration: 1.3, ease: 'power3.inOut' }, 0.05)
         tl.fromTo(q('[data-neon-glow]'), { opacity: 0 }, { opacity: 1, duration: 1.4, ease: 'power2.out' }, 0.4)
         tl.fromTo(q('[data-plinth]'), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 1.4, ease: 'expo.out' }, 0.1)
@@ -174,20 +231,13 @@ export default function Showroom({ initialId, entry }) {
       // page, arriving by a link to a piece, or a second visit to the door
       const returning = arrival.current === 'return' || direct.current || introduced()
       markIntroduced()
-      if (returning) gsap.set(q('[data-opening]'), { autoAlpha: 0 })
-      // the arrival: the house's name in the dark, then the room
-      const open = returning ? gsap.timeline({ paused: true }) : gsap.timeline()
-      open
-        .fromTo(q('[data-opening-letter]'), { yPercent: 110, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.1, ease: 'expo.out', stagger: 0.05 }, 0.15)
-        .fromTo(q('[data-opening-rule]'), { scaleX: 0 }, { scaleX: 1, duration: 1.0, ease: 'power3.inOut' }, 0.55)
-        .fromTo(q('[data-opening-line]'), { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 0.85)
-        .to(q('[data-opening] > *'), { opacity: 0, y: -14, duration: 0.7, ease: 'power2.in', stagger: 0.05 }, 2.05)
-        .to(q('[data-opening]'), { autoAlpha: 0, duration: 0.9, ease: 'power2.inOut' }, 2.3)
+      // the arrival: the house's name in the dark (takeOpening), then the room
+      const left = (takeOpening(!returning) - performance.now()) / 1000
 
       // the room: the neon strikes and climbs the glass, the stone is lit by
       // it, and the piece comes down to hang over the plinth
-      const tl = gsap.timeline({ delay: returning ? 0.15 : 2.35 })
-      tl.to(root, { '--sr-dim': 0, duration: 1.8, ease: 'power2.out' }, 0)
+      const tl = gsap.timeline({ delay: left > 0 ? left + 0.3 : 0.15 })
+      tl.to(q('[data-house-lights]'), { opacity: 0, duration: 1.8, ease: 'power2.out' }, 0)
       tl.fromTo(q('[data-neon-line]'), { scaleY: 0 }, { scaleY: 1, duration: 1.5, ease: 'power3.inOut' }, 0.1)
       tl.fromTo(q('[data-neon-glow]'), { opacity: 0 }, { opacity: 1, duration: 1.6, ease: 'power2.out' }, 0.6)
       tl.fromTo(q('[data-plinth]'), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 1.6, ease: 'expo.out' }, 0.2)
@@ -230,9 +280,19 @@ export default function Showroom({ initialId, entry }) {
     return () => window.clearTimeout(t)
   }, [next, prev])
 
+  // the room is up: what the next tap may open is fetched now, quietly
+  useEffect(() => {
+    if (!lit || frugal()) return
+    const idle = window.requestIdleCallback ?? ((fn) => window.setTimeout(fn, 1200))
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout
+    const id = idle(() => { loadCloser().catch(() => {}); loadOrder().catch(() => {}) }, { timeout: 4000 })
+    return () => cancel(id)
+  }, [lit])
+
   // a hand on its way to "Look closer" starts the frames on their way, once per piece
   const fetched = useRef(new Set())
   const prefetchFrames = useCallback(() => {
+    loadCloser().catch(() => {})
     if (fetched.current.has(productId)) return
     fetched.current.add(productId)
     const large = prefersLargeFrames()
@@ -253,6 +313,7 @@ export default function Showroom({ initialId, entry }) {
     if (busy.current) { queued.current = { kind: 'closer' }; return }
     setArmed(productId)
     setOverlay(null)
+    setCloserUsed(true)
     setCloser(true)
   }, [productId])
 
@@ -264,14 +325,15 @@ export default function Showroom({ initialId, entry }) {
     const cam = cameraRef.current
     const page = root.querySelectorAll('[data-quiet], [data-quiet-soft], [data-fade-group]')
     sound.play(closer ? 'portal' : 'close')
+    const vignette = root.querySelector('[data-focus-vignette]')
     if (closer) {
       gsap.to(page, { opacity: 0, duration: 0.6, ease: 'power2.out', overwrite: 'auto' })
       gsap.to(cam, { scale: 1.09, opacity: 0, duration: 0.85, ease: 'power2.inOut', overwrite: 'auto' })
-      gsap.to(root, { '--sr-focus': 1, duration: 1, ease: 'power2.inOut' })
+      gsap.to(vignette, { opacity: 1, duration: 1, ease: 'power2.inOut', overwrite: 'auto' })
     } else {
       gsap.to(page, { opacity: 1, duration: 0.9, ease: 'power2.inOut', delay: 0.35, overwrite: 'auto' })
       gsap.fromTo(cam, { scale: 1.02 }, { scale: 1, opacity: 1, duration: 1, ease: 'power3.out', delay: 0.5, overwrite: 'auto' })
-      gsap.to(root, { '--sr-focus': 0, duration: 1.1, ease: 'power2.inOut' })
+      gsap.to(vignette, { opacity: 0.7, duration: 1.1, ease: 'power2.inOut', overwrite: 'auto' })
     }
   }, [closer])
 
@@ -290,18 +352,31 @@ export default function Showroom({ initialId, entry }) {
     const root = rootRef.current
     const q = gsap.utils.selector(root)
     const tl = gsap.timeline()
-    // house lights down; the piece rises away; the words step out
-    tl.to(root, { '--sr-dim': 1, duration: 0.65, ease: 'power2.in' }, 0)
-    tl.to(q('[data-hero]'), { xPercent: -d * 5, yPercent: -4, scale: 0.97, filter: 'blur(6px)', opacity: 0, duration: 0.7, ease: 'power3.in' }, 0)
-    tl.to(q('[data-reveal-inner]'), { yPercent: -110, duration: 0.5, ease: 'power3.in', stagger: 0.04 }, 0.02)
-    tl.to(q('[data-size]'), { opacity: 0, y: -6, duration: 0.36, stagger: 0.025, ease: 'power2.in' }, 0)
-    tl.to(q('[data-neon-line]'), { opacity: 0.25, duration: 0.5, ease: 'power2.in' }, 0.1)
+    // house lights down; the piece rises away; the words step out. Each from
+    // where it rests, said outright: left to find out, the animation would ask
+    // the page for every element's current style, and a page asked that in
+    // the middle of changing has to work all its styles out again, each time
+    tl.fromTo(q('[data-house-lights]'), { opacity: 0 }, { opacity: 0.8, duration: 0.65, ease: 'power2.in' }, 0)
+    tl.fromTo(
+      q('[data-hero]'),
+      { xPercent: 0, yPercent: 0, scale: 1, filter: 'blur(0px)', opacity: 1 },
+      { xPercent: -d * 5, yPercent: -4, scale: 0.97, filter: 'blur(6px)', opacity: 0, duration: 0.7, ease: 'power3.in' },
+      0,
+    )
+    tl.fromTo(q('[data-reveal-inner]'), { yPercent: 0 }, { yPercent: -110, duration: 0.5, ease: 'power3.in', stagger: 0.04 }, 0.02)
+    tl.fromTo(q('[data-size]'), { opacity: 1, y: 0 }, { opacity: 0, y: -6, duration: 0.36, stagger: 0.025, ease: 'power2.in' }, 0)
+    tl.fromTo(q('[data-neon-line]'), { opacity: 1 }, { opacity: 0.25, duration: 0.5, ease: 'power2.in' }, 0.1)
     // the room is relit in the new piece's palette while it is dark; the last
     // of the change is still moving as the lights come up, so the colour is
-    // seen arriving with the piece
-    tl.to(root, { ...themeVars(target.theme), duration: 1.1, ease: 'power2.inOut' }, 0.2)
+    // seen arriving with the piece. On a phone it changes at once, at full
+    // dark, below: every element on the page takes its colour from these, so
+    // each change of them restyles the whole page, and a phone that did that
+    // every frame for a second had no frames left for the piece moving
+    const phone = coarse()
+    if (!phone) tl.to(root, { ...themeVars(target.theme), duration: 1.1, ease: 'power2.inOut' }, 0.2)
     // the set changes at full dark, once the new piece can be shown
     tl.add(() => {
+      if (phone) relightNow(root, target.theme)
       tl.pause()
       ready(target).then(() => {
         pendingIn.current = { d }
@@ -317,6 +392,8 @@ export default function Showroom({ initialId, entry }) {
     const pending = pendingIn.current
     if (!pending) return
     pendingIn.current = null
+    // the transitions held off while the room was relit come back with the new piece (relightNow)
+    rootRef.current.classList.remove('relighting')
     // a piece thrown off by a swipe is put back in the dark, ready for the next
     gsap.killTweensOf(parallaxRef.current)
     gsap.set(parallaxRef.current, { clearProps: 'transform,opacity' })
@@ -325,7 +402,7 @@ export default function Showroom({ initialId, entry }) {
     const { d } = pending
     const tl = gsap.timeline({ onComplete: () => { busy.current = false; root.dispatchEvent(new Event('sr-settled')) } })
     sound.duck(false)
-    tl.to(root, { '--sr-dim': 0, duration: 1.2, ease: 'power2.out' }, 0)
+    tl.to(q('[data-house-lights]'), { opacity: 0, duration: 1.2, ease: 'power2.out' }, 0)
     // the neon comes back up with a breath of its own
     tl.fromTo(q('[data-neon-line]'), { opacity: 0.25 }, { opacity: 1, duration: 1.1, ease: 'power2.out', clearProps: 'opacity' }, 0.15)
     tl.fromTo(
@@ -467,24 +544,6 @@ export default function Showroom({ initialId, entry }) {
     >
       <SceneBack />
 
-      {/* the opening: the house introduces itself before the room is lit */}
-      <div
-        data-opening
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-[60] flex flex-col items-center justify-center"
-        style={{ background: 'rgb(var(--sr-bg0))' }}
-      >
-        <span className="flex overflow-hidden whitespace-nowrap pl-[0.28em] font-display text-[clamp(1.55rem,6.2vw,5rem)] leading-none tracking-[0.28em]" style={{ color: 'rgb(var(--sr-ink))' }}>
-          {'HOSHA STONE'.split('').map((ch, i) => (
-            <span key={i} data-opening-letter className="inline-block">{ch === ' ' ? '\u00a0' : ch}</span>
-          ))}
-        </span>
-        <span data-opening-rule className="mt-7 block h-px w-24 origin-center" style={{ background: 'rgb(var(--sr-neon))', boxShadow: '0 0 12px rgb(var(--sr-neon) / 0.8)' }} />
-        <span data-opening-line className="mt-6 text-[10px] uppercase tracking-[0.42em]" style={{ color: 'rgb(var(--sr-ink) / 0.6)' }}>
-          {ABOUT.motto}
-        </span>
-      </div>
-
       <div className="relative z-40">
         <Header
           onHome={goHome}
@@ -585,7 +644,7 @@ export default function Showroom({ initialId, entry }) {
         <Pager pos={pos} total={n} dir={dir} />
       </div>
       <div ref={purchaseRef} data-fade-group className="relative z-20 order-2 px-6 pt-9 lg:absolute lg:bottom-[8.5%] lg:right-[max(3rem,4vw)] lg:p-0">
-        <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
+        <Purchase product={product} size={size} onSize={setSize} onOrder={order} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
       </div>
 
       <SearchSheet
@@ -600,29 +659,33 @@ export default function Showroom({ initialId, entry }) {
         }}
         onCategory={pickCategory}
       />
-      <Closer
-        open={closer}
-        armed={armed === product.id}
-        product={product}
-        onClose={() => setCloser(false)}
-        sourceRef={stageRef}
-        onFilm={openFilm}
-        bar={
-          <CloserBar
+      {closerUsed && (
+        <Suspense fallback={null}>
+          <Closer
+            open={closer}
+            armed={armed === product.id}
             product={product}
-            size={size}
-            dir={dir}
-            saved={saved.includes(product.id)}
-            kept={keptBy(product.id)}
-            onSave={(on) => toggleSaved(product.id, on)}
-            onChoose={(ref) => { sheetFrom.current = ref.current; setSizeSheet(true) }}
-            onOrder={() => setOrdering(true)}
+            onClose={() => setCloser(false)}
+            sourceRef={stageRef}
+            onFilm={openFilm}
+            bar={
+              <CloserBar
+                product={product}
+                size={size}
+                dir={dir}
+                saved={saved.includes(product.id)}
+                kept={keptBy(product.id)}
+                onSave={(on) => toggleSaved(product.id, on)}
+                onChoose={(ref) => { sheetFrom.current = ref.current; setSizeSheet(true) }}
+                onOrder={order}
+              />
+            }
+            purchase={
+              <Purchase product={product} size={size} onSize={setSize} onOrder={order} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
+            }
           />
-        }
-        purchase={
-          <Purchase product={product} size={size} onSize={setSize} onOrder={() => setOrdering(true)} onSizeGuide={() => setGuide(true)} dir={dir} saved={saved.includes(product.id)} kept={keptBy(product.id)} onSave={(on) => toggleSaved(product.id, on)} />
-        }
-      />
+        </Suspense>
+      )}
 
       {/* the loupe that stands in for the cursor over the piece (useShowcase) */}
       <div ref={cursorRef} aria-hidden="true" className="pointer-events-none fixed left-0 top-0 z-[55] hidden lg:block" style={{ opacity: 0 }}>
@@ -637,7 +700,11 @@ export default function Showroom({ initialId, entry }) {
       </div>
       <MobileMenu open={overlay === 'menu'} onClose={() => setOverlay(null)} onNav={onNav} category={category} onCategory={pickCategory} />
 
-      <OrderPanel open={ordering} product={product} size={size} onClose={() => setOrdering(false)} />
+      {orderUsed && (
+        <Suspense fallback={null}>
+          <OrderPanel open={ordering} product={product} size={size} onClose={() => setOrdering(false)} />
+        </Suspense>
+      )}
       <Film key={product.id} ref={filmRef} film={product.film} title={product.name} />
       <SizeGuide open={guide} product={product} onClose={() => setGuide(false)} />
 
@@ -650,7 +717,7 @@ export default function Showroom({ initialId, entry }) {
         kept={keptBy(product.id)}
         onSave={(on) => toggleSaved(product.id, on)}
         onChoose={(ref) => { sheetFrom.current = ref.current; setSizeSheet(true) }}
-        onOrder={() => setOrdering(true)}
+        onOrder={order}
         watchRef={purchaseRef}
         lit={lit}
         hidden={closer || ordering || guide || sizeSheet || !!overlay}
@@ -661,7 +728,7 @@ export default function Showroom({ initialId, entry }) {
         size={size}
         onSize={setSize}
         onClose={() => setSizeSheet(false)}
-        onOrder={() => { setSizeSheet(false); setOrdering(true) }}
+        onOrder={() => { setSizeSheet(false); order() }}
         onSizeGuide={() => { setSizeSheet(false); setGuide(true) }}
         returnFocusRef={sheetFrom}
       />

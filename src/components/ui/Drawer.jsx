@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
 import Plate from './Plate.jsx'
 import { sound } from '../../lib/sound/index.js'
+import { rest } from '../../lib/rest.js'
 
 /**
  * One drawer, for anything that slides in beside the page — the size guide
@@ -21,6 +22,7 @@ export default function Drawer({ open, onClose, title, children }) {
     if (mounted.current) sound.play(open ? 'open' : 'close')
 
     if (open) {
+      rest(panel, false)
       gsap.to(scrim, { autoAlpha: 1, duration: 0.34, ease: 'power2.out' })
       gsap.fromTo(
         panel,
@@ -29,7 +31,9 @@ export default function Drawer({ open, onClose, title, children }) {
       )
     } else if (mounted.current) {
       gsap.to(scrim, { autoAlpha: 0, duration: 0.28, ease: 'power2.in' })
-      gsap.to(panel, { xPercent: 104, autoAlpha: 0, duration: 0.42, ease: 'power3.in' })
+      gsap.to(panel, { xPercent: 104, autoAlpha: 0, duration: 0.42, ease: 'power3.in', onComplete: () => rest(panel) })
+    } else {
+      rest(panel)
     }
     mounted.current = true
   }, [open])

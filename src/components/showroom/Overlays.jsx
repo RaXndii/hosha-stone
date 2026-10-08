@@ -4,6 +4,7 @@ import { CATEGORIES, PRODUCTS, countIn, themeVars } from '../../data/showroom.js
 import { AllSoundToggle, Glass, PlusMinus, SoundToggle } from './Header.jsx'
 import { INSTAGRAM, WHATSAPP } from '../../data/order.js'
 import { sound } from '../../lib/sound/index.js'
+import { rest } from '../../lib/rest.js'
 
 /**
  * Shared open/close motion: a scrim and a sheet that drops from the header.
@@ -21,6 +22,7 @@ function useSheet(open, scrimRef, sheetRef, from = -18, onHidden) {
     gsap.killTweensOf([scrim, sheet])
     if (mounted.current) sound.play(open ? 'open' : 'close')
     if (open) {
+      rest(sheet, false)
       gsap.to(scrim, { autoAlpha: 1, duration: 0.4, ease: 'power2.out' })
       gsap.fromTo(sheet, { autoAlpha: 0, y: from }, { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power3.out' })
     } else if (mounted.current) {
@@ -30,10 +32,11 @@ function useSheet(open, scrimRef, sheetRef, from = -18, onHidden) {
         y: from * 0.6,
         duration: 0.32,
         ease: 'power2.in',
-        onComplete: () => hidden.current?.(),
+        onComplete: () => { rest(sheet); hidden.current?.() },
       })
     } else {
       gsap.set([scrim, sheet], { autoAlpha: 0 })
+      rest(sheet)
     }
     mounted.current = true
   }, [open, scrimRef, sheetRef, from])

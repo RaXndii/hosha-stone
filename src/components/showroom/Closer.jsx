@@ -7,6 +7,7 @@ import Unzip from './Unzip.jsx'
 import Flip from './Flip.jsx'
 import Plate from '../ui/Plate.jsx'
 import { sound } from '../../lib/sound/index.js'
+import { rest } from '../../lib/rest.js'
 
 const ink = (a = 1) => `rgb(var(--sr-ink) / ${a})`
 const shortest = (from, to) => ((((to - from) % 360) + 540) % 360) - 180
@@ -151,6 +152,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
     }
 
     if (open) {
+      rest(root, false)
       gsap.set(root, { visibility: 'visible' })
       document.documentElement.style.overflow = 'hidden'
       if (reduced) {
@@ -169,12 +171,14 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
     if (!mounted.current) {
       mounted.current = true
       gsap.set(root, { visibility: 'hidden' })
+      rest(root)
       return
     }
     document.documentElement.style.overflow = ''
     const done = () => {
       gsap.set(root, { visibility: 'hidden' })
       gsap.set(frame, { clearProps: 'transform' })
+      rest(root)
       // the next visit starts from the front, at arm's length
       ttRef.current?.reset()
       setView({ kind: 'piece' })

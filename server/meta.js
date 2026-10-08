@@ -181,6 +181,25 @@ export function metaFor(req) {
 }
 
 /**
+ * The house's name in the dark, as index.html draws it before any script has
+ * run — lit in the colours of the piece the showroom opens on, and saying the
+ * house's current motto. Replaces the block between <!--hs:opening--> marks.
+ */
+export function openingFor() {
+  const t = firstPiece()?.theme ?? {}
+  const rgb = (c, d) => (Array.isArray(c) ? c.map((n) => Math.round(Number(n) || 0)).join(' ') : d)
+  const vars = `--o-bg: ${rgb(t.bg0, '2 8 10')}; --o-ink: ${rgb(t.ink, '240 246 246')}; --o-neon: ${rgb(t.neon, '64 206 196')}`
+  const letters = [...'HOSHA STONE'].map((ch, i) => `<span style="animation-delay:${(0.15 + i * 0.05).toFixed(2)}s">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('')
+  return [
+    `<div id="hs-opening" aria-hidden="true" style="${vars}">`,
+    `  <div><span class="o-name">${letters}</span></div>`,
+    '  <div><span class="o-rule"></span></div>',
+    `  <div><span class="o-line">${esc(about().motto || 'Simple. Never ordinary.')}</span></div>`,
+    '</div>',
+  ].join('\n    ')
+}
+
+/**
  * The catalogue, written into the page so the site can draw without asking
  * for it again (src/lib/catalogue.js). JSON inside a script tag is inert; the
  * one way out of it, a closing tag, is escaped.

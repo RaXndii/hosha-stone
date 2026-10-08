@@ -8,7 +8,7 @@ import { cookies, issueSetupCode } from './auth.js'
 import { publicRouter } from './routes/public.js'
 import { adminRouter } from './routes/admin.js'
 import { shareRouter } from './routes/share.js'
-import { catalogueFor, metaFor, origin, sitemap } from './meta.js'
+import { catalogueFor, metaFor, openingFor, origin, sitemap } from './meta.js'
 import { HttpError } from './validate.js'
 
 /**
@@ -82,11 +82,13 @@ if (existsSync(DIST)) {
   // are what a link pasted into WhatsApp or Instagram is read from
   const SHELL = join(DIST, 'index.html')
   const META = /<!--hs:meta-->[\s\S]*?<!--\/hs:meta-->/
+  const OPENING = /<!--hs:opening-->[\s\S]*?<!--\/hs:opening-->/
   let shell = null
   app.get(/^\/(?!api\/|media\/|share\/).*/, (req, res) => {
     try {
       shell ??= readFileSync(SHELL, 'utf8')
-      res.type('html').send(shell.replace(META, `${metaFor(req)}\n    ${catalogueFor()}`))
+      // (as functions, so a "$" in a name or a motto is never read as a replacement pattern)
+      res.type('html').send(shell.replace(META, () => `${metaFor(req)}\n    ${catalogueFor()}`).replace(OPENING, () => openingFor()))
     } catch {
       res.sendFile(SHELL)
     }

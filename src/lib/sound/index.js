@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { SOUNDS, makeKit, makeScore, mtof } from './recipes.js'
+import { SOUNDS, makeKit, makeRoom, makeScore, mtof } from './recipes.js'
 
 /**
  * The house's sound: the music, and a sound for every touch.
@@ -7,8 +7,10 @@ import { SOUNDS, makeKit, makeScore, mtof } from './recipes.js'
  * Browsers only let a page make sound once the visitor has touched it, so
  * nothing plays until then; the first tap anywhere starts it, and the music
  * fades in over several seconds rather than arriving. It stops while the tab
- * is out of sight, and on a phone it plays alongside the visitor's own music
- * instead of stopping it, and stays quiet when the phone is on silent.
+ * is out of sight. On a phone the music plays the way a film does — through
+ * the silent switch, which most iPhones are left on (see claim()) — and is
+ * voiced for a phone's small speaker, which cannot play the low notes the
+ * music stands on.
  *
  * Two switches, each remembered on this device: the music (the bars in the
  * header), which can go quiet while every touch keeps its sound; and all
@@ -27,9 +29,14 @@ import { SOUNDS, makeKit, makeScore, mtof } from './recipes.js'
 const KEY = 'hs-sound'
 const MUSIC_KEY = 'hs-music'
 const MUSIC = 0.32 // the score's level: well under the touches, a room's air rather than a song
+const PHONE_LIFT = 1.6 // on a phone's speaker (measured: see the README's "Sound")
 // sounds that belong to the room rather than to a touch: they go with the music
 const AMBIENT = new Set(['thunder'])
 const TOUCH = 0.9
+
+const IOS = typeof navigator !== 'undefined' && (/iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+// a phone or a tablet: a speaker a few millimetres across, held at arm's length
+const SMALL = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse) and (hover: none)').matches
 
 let ctx = null
 let master = null
@@ -57,15 +64,86 @@ const emit = () => listeners.forEach((fn) => fn())
 
 /* ------------------------------------------------------------------ the graph */
 
+/**
+ * How the phone treats the site's sound. An iPhone files a page's sound as
+ * "ambient" unless told otherwise, and ambient sound is silenced outright by
+ * the ring/silent switch — which is where most iPhones live, so the house was
+ * silent on them. While the music is on, the sound is filed as playback and
+ * plays as a film does: through the switch, at the volume the buttons set
+ * (and, like a film, pausing whatever the visitor was listening to). With the
+ * music off, the touches alone are ambient again — they play over the
+ * visitor's own music and keep to the switch, as the phone's own keyboard
+ * clicks do. With all sound off the claim is let go.
+ */
+function claim() {
+  const want = !enabled ? 'auto' : musicOn ? 'playback' : 'ambient'
+  try {
+    if (navigator.audioSession) {
+      if (navigator.audioSession.type !== want) navigator.audioSession.type = want
+      return
+    }
+  } catch { /* not offered */ }
+  if (IOS) carrier(want === 'playback')
+}
+
+/**
+ * Older iPhones (before iOS 17) have no audioSession to ask, but a media
+ * element playing makes the whole page's sound playback, the context's
+ * included. So one plays: a second of silence on a loop, started inside the
+ * visitor's touch (the only place a phone allows it), paused with the sound.
+ */
+let tag = null
+function carrier(on) {
+  if (!on) { tag?.pause(); return }
+  if (!tag) {
+    tag = document.createElement('audio')
+    tag.setAttribute('x-webkit-airplay', 'deny')
+    tag.disableRemotePlayback = true
+    tag.preload = 'auto'
+    tag.loop = true
+    tag.src = URL.createObjectURL(silence())
+  }
+  if (tag.paused) tag.play().catch(() => {})
+}
+
+/** One second of silence as a WAV: 8 kHz, 8-bit, mono — about 8 KB, made here, never fetched. */
+function silence() {
+  const n = 8000
+  const v = new DataView(new ArrayBuffer(44 + n))
+  const text = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)))
+  text(0, 'RIFF'); v.setUint32(4, 36 + n, true); text(8, 'WAVE')
+  text(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true)
+  text(36, 'data'); v.setUint32(40, n, true)
+  for (let i = 0; i < n; i++) v.setUint8(44 + i, 128)
+  return new Blob([v.buffer], { type: 'audio/wav' })
+}
+
+/**
+ * Run something costly once nothing is happening: no press for a few seconds
+ * (time enough for whatever a press set moving to land) and the page idle.
+ */
+let lastPress = 0
+function whenQuiet(fn) {
+  const idle = window.requestIdleCallback ?? ((f) => window.setTimeout(f, 50))
+  const attempt = () => idle(() => {
+    const wait = 3000 - (performance.now() - lastPress)
+    if (wait > 0) window.setTimeout(attempt, wait)
+    else fn()
+  }, { timeout: 2000 })
+  window.setTimeout(attempt, 1000)
+}
+
 function build() {
-  // a phone's own music keeps playing, and the silent switch is respected
-  try { if (navigator.audioSession) navigator.audioSession.type = 'ambient' } catch { /* not offered */ }
   const AC = window.AudioContext || window.webkitAudioContext
   if (!AC) return false
+  claim()
   ctx = new AC({ latencyHint: 'interactive' })
   // the switch shows sound moving only while it really is
   ctx.onstatechange = emit
-  kit = makeKit(ctx)
+  // the reverb's room is hung later, once the visitor's hands are still (makeKit)
+  kit = makeKit(ctx, { room: false })
+  whenQuiet(() => makeRoom(ctx, kit, SMALL ? 2.8 : 3.6))
 
   // everything meets in a gentle compressor, so thunder over music over a
   // chime never clips
@@ -88,7 +166,8 @@ function build() {
   kit.verb.connect(wet).connect(comp)
 
   musicBus = ctx.createGain()
-  musicBus.gain.value = MUSIC
+  // a phone's speaker loses the music's whole low half, so what is left is raised to meet the touches
+  musicBus.gain.value = SMALL ? MUSIC * PHONE_LIFT : MUSIC
   duckGain = ctx.createGain()
   musicBus.connect(duckGain).connect(comp)
   touchBus = ctx.createGain()
@@ -102,7 +181,7 @@ function startMusic(fadeIn = 7) {
   if (score?.scene === wanted.scene) return
   const at = ctx.currentTime
   score?.stop(at)
-  score = makeScore(ctx, musicBus, kit, wanted.scene, wanted)
+  score = makeScore(ctx, musicBus, kit, wanted.scene, { ...wanted, small: SMALL })
   score.scene = wanted.scene
   score.fade(1, fadeIn, at)
   score.schedule(at + 2.5)
@@ -127,13 +206,30 @@ function rise() {
   master.gain.setTargetAtTime(1, ctx.currentTime, 0.4)
 }
 
-/** The first touch: make the sound, or wake it again after the phone paused it. */
-function unlock() {
+/**
+ * The first touch: make the sound, or wake it again after the phone paused it
+ * (a call, another app, the screen locked). It has to happen inside the touch
+ * itself, so it is called from every kind of press; once the sound is running
+ * with its music in place, a press costs nothing here.
+ */
+function unlock(force = false) {
   if (!enabled) return
+  const settled = ctx?.state === 'running' && (score || !musicOn || !wanted.scene) && !(musicOn && tag?.paused)
+  if (settled && !force) return
   if (!ctx && !build()) return
+  claim()
   if (ctx.state !== 'running') ctx.resume().catch(() => {})
+  // older WebKit only lets sound out once something has been started inside a touch
+  try {
+    const nudge = ctx.createBufferSource()
+    nudge.buffer = ctx.createBuffer(1, 1, ctx.sampleRate)
+    nudge.connect(ctx.destination)
+    nudge.start(0)
+  } catch { /* nothing to nudge */ }
   rise()
-  startMusic()
+  // the music's first chord is laid down just after the touch, not inside it,
+  // so the touch is answered first; it fades in over seconds either way
+  window.setTimeout(startMusic, 30)
   run()
 }
 
@@ -238,6 +334,7 @@ export const sound = {
     writePref(MUSIC_KEY, on)
     if (on && !enabled) { sound.set(true); return }
     if (ctx && enabled) {
+      claim()
       if (on) {
         startMusic(3)
         window.setTimeout(() => sound.play('bloom'), 80)
@@ -256,7 +353,7 @@ export const sound = {
     writePref(KEY, on)
     emit()
     if (on) {
-      unlock()
+      unlock(true)
       emit()
       // a moment after waking, so the chord is heard rather than lost in the start
       window.setTimeout(() => sound.play('bloom'), 80)
@@ -264,7 +361,11 @@ export const sound = {
       master.gain.cancelScheduledValues(ctx.currentTime)
       master.gain.setTargetAtTime(0, ctx.currentTime, 0.12)
       window.clearInterval(timer)
-      window.setTimeout(() => { if (!enabled) ctx.suspend().catch(() => {}) }, 700)
+      window.setTimeout(() => {
+        if (enabled) return
+        ctx.suspend().catch(() => {})
+        claim()
+      }, 700)
     }
   },
 
@@ -296,17 +397,26 @@ export function installSound() {
   if (installed || typeof window === 'undefined') return
   installed = true
 
-  // a phone may want a different event before it allows sound; any of these will do
-  const wake = () => unlock()
-  for (const type of ['pointerdown', 'touchend', 'keydown', 'click']) window.addEventListener(type, wake, { capture: true, passive: true })
+  // Browsers differ on which press counts as the visitor asking for sound: a
+  // mouse's press counts at once, a finger's only once it lifts (touchend,
+  // pointerup) — and a finger that scrolled the page does not count at all.
+  // Listening to all of them, the first one that counts starts the sound.
+  const wake = () => {
+    lastPress = performance.now()
+    unlock()
+  }
+  for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown', 'click']) window.addEventListener(type, wake, { capture: true, passive: true })
 
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return
     if (document.hidden) {
       window.clearInterval(timer)
       ctx.suspend().catch(() => {})
+      tag?.pause()
     } else if (enabled) {
+      // a phone may refuse this until the next touch; the next touch then does it
       ctx.resume().catch(() => {})
+      if (tag) claim()
       run()
     }
   })

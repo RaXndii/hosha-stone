@@ -27,8 +27,14 @@ const SILENT = 0.0001
  * What every recipe draws on: two kinds of noise and the room itself — a
  * convolution reverb whose impulse is generated, a few seconds of decaying
  * noise that darkens as it fades, the way sound does in a stone room.
+ *
+ * The room is the costly part to make (a phone spends a fifth of a second
+ * on it), and the sound is made in the visitor's first touch, which should
+ * answer at once. So the site asks for the kit without it (room: false) and
+ * hangs the room in a moment later with makeRoom(); until then the reverb is
+ * silent and every sound is simply dry. Offline, the kit is made whole.
  */
-export function makeKit(ac) {
+export function makeKit(ac, { room = true } = {}) {
   const sr = ac.sampleRate
   const len = Math.floor(sr * 3)
 
@@ -46,9 +52,14 @@ export function makeKit(ac) {
     b[i] = last * 3.5
   }
 
-  const verb = ac.createConvolver()
-  verb.buffer = impulse(ac, 3.6, 2.4)
-  return { white, brown, verb }
+  const kit = { white, brown, verb: ac.createConvolver() }
+  if (room) makeRoom(ac, kit)
+  return kit
+}
+
+/** The kit's room: its reverb's impulse, set once. Shorter on a phone, whose speaker loses most of a long tail. */
+export function makeRoom(ac, kit, seconds = 3.6) {
+  if (!kit.verb.buffer) kit.verb.buffer = impulse(ac, seconds, 2.4)
 }
 
 function impulse(ac, seconds, curve) {
@@ -59,13 +70,22 @@ function impulse(ac, seconds, curve) {
   for (let c = 0; c < 2; c++) {
     const d = buf.getChannelData(c)
     let lp = 0
+    let k = 0
+    let env = 0
     for (let i = pre; i < len; i++) {
-      const x = (i - pre) / (len - pre)
-      // a one-pole low-pass whose cutoff falls as the tail decays
-      lp += (0.62 - 0.52 * x) * ((Math.random() * 2 - 1) - lp)
-      // fades to exactly nothing, so the tail never ends in a click
-      d[i] = lp * Math.pow(1 - x, curve)
+      // the slow parts move every 32 samples (under a millisecond), not every one
+      if (((i - pre) & 31) === 0) {
+        const x = (i - pre) / (len - pre)
+        // a one-pole low-pass whose cutoff falls as the tail decays
+        k = 0.62 - 0.52 * x
+        // fades to exactly nothing, so the tail never ends in a click
+        env = Math.pow(1 - x, curve)
+      }
+      lp += k * ((Math.random() * 2 - 1) - lp)
+      d[i] = lp * env
     }
+    // the last block ends on silence too
+    d[len - 1] = 0
   }
   return buf
 }
@@ -553,12 +573,18 @@ const PROGRESSIONS = {
     [36, 55, 60, 64, 69],
   ],
 }
+/*
+ * phone: how each page's music is voiced for a phone's speaker — how far its
+ * pads open, and how much it is raised — so that through a model of that
+ * speaker it stands against the touches as it does on a desk (README, "Sound").
+ * The archive is the darkest, so loses the most, and is given the most back.
+ */
 const SCENE = {
   // calm by design: chords that change slowly and arrive slowly, a darker
   // pad, and the glass notes few and far between
-  room: { chord: 13, attack: 4.6, release: 6.5, cutoff: 880, pad: 0.05, bass: 0.06, glint: [6, 13], plucks: false, wind: 0 },
-  archive: { chord: 16, attack: 5.5, release: 7.5, cutoff: 560, pad: 0.039, bass: 0.07, glint: [9, 18], plucks: false, wind: 0.032 },
-  story: { chord: 12, attack: 3.8, release: 5.5, cutoff: 1100, pad: 0.04, bass: 0.05, glint: [6, 13], plucks: true, wind: 0 },
+  room: { chord: 13, attack: 4.6, release: 6.5, cutoff: 880, pad: 0.05, bass: 0.06, glint: [6, 13], plucks: false, wind: 0, phone: { open: 1.45, trim: 1.3 } },
+  archive: { chord: 16, attack: 5.5, release: 7.5, cutoff: 560, pad: 0.039, bass: 0.07, glint: [9, 18], plucks: false, wind: 0.032, phone: { open: 1.9, trim: 2.1 } },
+  story: { chord: 12, attack: 3.8, release: 5.5, cutoff: 1100, pad: 0.04, bass: 0.05, glint: [6, 13], plucks: true, wind: 0, phone: { open: 1.4, trim: 1.4 } },
 }
 
 /**
@@ -619,9 +645,26 @@ function padVoice(ac, dest, t, midi, s, { cutoff, gain, pan, until }) {
   }
 }
 
-function bassVoice(ac, dest, t, midi, s, { gain, until }) {
+/**
+ * A phone's speaker plays nothing much below 300 Hz, and the low note sits
+ * near 70. Played as a pure tone it is simply gone; given its overtones — the
+ * octave, the twelfth, the next octave up — the ear hears the low note in them
+ * anyway (the way a small radio still has a bass line), so on a phone the low
+ * note carries its own. One waveform for every phone, made once per context.
+ */
+const overtones = new WeakMap()
+function bassWave(ac) {
+  if (!overtones.has(ac)) {
+    const amps = [0, 1, 0.72, 0.5, 0.34, 0.2, 0.11, 0.06]
+    overtones.set(ac, ac.createPeriodicWave(new Float32Array(amps.length), Float32Array.from(amps)))
+  }
+  return overtones.get(ac)
+}
+
+function bassVoice(ac, dest, t, midi, s, { gain, until, small }) {
   const o = ac.createOscillator()
-  o.type = 'sine'
+  if (small) o.setPeriodicWave(bassWave(ac))
+  else o.type = 'sine'
   o.frequency.value = mtof(midi)
   const amp = gainNode(ac, 0)
   amp.gain.setValueAtTime(0, t)
@@ -646,11 +689,14 @@ function bassVoice(ac, dest, t, midi, s, { gain, until }) {
  * `until`; the engine calls it a little ahead of time while the page is open,
  * and the offline renderer calls it once for the whole length.
  */
-export function makeScore(ac, out, kit, scene, { transpose = 0, brightness = 1 } = {}) {
+export function makeScore(ac, out, kit, scene, { transpose = 0, brightness = 1, small = false } = {}) {
   const s = SCENE[scene] ?? SCENE.room
+  // on a phone the pads open a little: their warmth is in the low end a phone
+  // cannot play, and their overtones are what its speaker can
+  const open = small ? s.phone.open : 1
   const prog = PROGRESSIONS[scene] ?? PROGRESSIONS.room
   const bus = gainNode(ac, 0)
-  bus.connect(out)
+  bus.connect(gainNode(ac, small ? s.phone.trim : 1)).connect(out)
   send(ac, bus, kit, 0.55)
 
   let step = 0
@@ -672,11 +718,12 @@ export function makeScore(ac, out, kit, scene, { transpose = 0, brightness = 1 }
     src.loop = true
     const bp = ac.createBiquadFilter()
     bp.type = 'bandpass'
-    bp.frequency.value = 420
+    // on a phone the wind blows a little higher, where its speaker can carry it
+    bp.frequency.value = small ? 640 : 420
     bp.Q.value = 1.1
     const lfo = ac.createOscillator()
     lfo.frequency.value = 0.07
-    const depth = gainNode(ac, 220)
+    const depth = gainNode(ac, small ? 300 : 220)
     lfo.connect(depth).connect(bp.frequency)
     const g = gainNode(ac, 0)
     g.gain.setTargetAtTime(s.wind, ac.currentTime, 3)
@@ -713,14 +760,14 @@ export function makeScore(ac, out, kit, scene, { transpose = 0, brightness = 1 }
     const made = upper.map((m, i) =>
       keep(m, () =>
         padVoice(ac, bus, t, m, s, {
-          cutoff: s.cutoff * light * rand(0.92, 1.08),
+          cutoff: s.cutoff * light * open * rand(0.92, 1.08),
           gain: s.pad * (i === upper.length - 1 ? 0.7 : 1),
           pan: (i / Math.max(1, upper.length - 1)) * 1.2 - 0.6,
           until,
         }),
       ),
     )
-    made.push(keep(`bass ${bass}`, () => bassVoice(ac, bus, t, bass, s, { gain: s.bass, until })))
+    made.push(keep(`bass ${bass}`, () => bassVoice(ac, bus, t, bass, s, { gain: s.bass, until, small })))
     return made
   }
 

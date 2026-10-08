@@ -25,7 +25,25 @@ import { sound } from '../../lib/sound/index.js'
  * each one lights its own band of the page in its own colours — the same rule
  * the showroom follows, read downward instead of across.
  */
-gsap.registerPlugin(ScrollTrigger)
+/*
+ * ScrollTrigger, once registered, watches the page for good — a frame loop
+ * and a timer that never stop — and this script is fetched ahead of time,
+ * while the showroom is idle. Registered at the top of this file, it kept
+ * every page of the site awake, sixty frames a second, for a page the visitor
+ * was not on. So it starts when the story opens, and sleeps when they leave.
+ */
+let registered = false
+function Awake() {
+  // a child's layout effects run before its parent's, and before those of the
+  // siblings after it: first in the page, this one runs before any band sets
+  // up its trigger
+  useLayoutEffect(() => {
+    if (!registered) { gsap.registerPlugin(ScrollTrigger); registered = true }
+    else ScrollTrigger.enable()
+    return () => ScrollTrigger.disable()
+  }, [])
+  return null
+}
 
 const ARCHIVE = {
   bg0: [4, 3, 8],
@@ -237,6 +255,7 @@ export default function Story() {
       className="relative min-h-[100svh] overflow-x-hidden"
       style={{ ...vars, background: 'rgb(var(--sr-bg0))', color: 'rgb(var(--sr-ink))' }}
     >
+      <Awake />
       {/* the obsidian room */}
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(90% 60% at 50% -6%, rgb(var(--sr-bg2) / 0.5), transparent 62%), linear-gradient(to bottom, rgb(var(--sr-bg1)), rgb(var(--sr-bg0)) 58%, rgb(var(--sr-floor)))' }} />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, u
 import gsap from 'gsap'
 import Plate from '../ui/Plate.jsx'
 import { sound } from '../../lib/sound/index.js'
+import { rest } from '../../lib/rest.js'
 import { clock } from '../../data/showroom.js'
 
 /**
@@ -81,6 +82,8 @@ export default function Film({ film, title, ref }) {
   const start = useCallback((from) => {
     const v = videoRef.current
     if (!v || !film) return
+    // awake before it plays: the press that asked for it is the only moment a phone allows the sound
+    rest(rootRef.current, false)
     originRef.current = from || null
     lastFocus.current = document.activeElement
     const want = pickSrc(film, v)
@@ -184,6 +187,7 @@ export default function Film({ film, title, ref }) {
     }
 
     if (open) {
+      rest(root, false)
       gsap.set(root, { visibility: 'visible' })
       prevOverflow.current = document.documentElement.style.overflow
       document.documentElement.style.overflow = 'hidden'
@@ -204,12 +208,14 @@ export default function Film({ film, title, ref }) {
     if (!mounted.current) {
       mounted.current = true
       gsap.set(root, { visibility: 'hidden' })
+      rest(root)
       return
     }
     document.documentElement.style.overflow = prevOverflow.current
     const done = () => {
       gsap.set(root, { visibility: 'hidden' })
       gsap.set(frame, { clearProps: 'transform,opacity' })
+      rest(root)
       lastFocus.current?.focus?.({ preventScroll: true })
     }
     if (reduced()) { done(); return }

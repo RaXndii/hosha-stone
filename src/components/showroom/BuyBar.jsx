@@ -4,6 +4,7 @@ import Roll from './Roll.jsx'
 import FavoriteButton from './PixelHeart.jsx'
 import Plate from '../ui/Plate.jsx'
 import { sound } from '../../lib/sound/index.js'
+import { rest } from '../../lib/rest.js'
 
 /**
  * Buying, where a thumb already is.
@@ -39,16 +40,18 @@ export function SizeSheet({ open, onClose, product, size, onSize, onOrder, onSiz
     gsap.killTweensOf([scrim, sheet])
     if (mounted.current) sound.play(open ? 'open' : 'close')
     if (open) {
+      rest(sheet, false)
       gsap.set(sheet, { visibility: 'visible' })
       gsap.to(scrim, { autoAlpha: 1, duration: 0.35, ease: 'power2.out' })
       gsap.fromTo(sheet, { yPercent: 100 }, { yPercent: 0, duration: reduced() ? 0 : 0.55, ease: 'expo.out' })
       gsap.fromTo(sheet.querySelectorAll('[data-sheet-in]'), { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out', stagger: 0.03, delay: 0.08 })
     } else if (mounted.current) {
       gsap.to(scrim, { autoAlpha: 0, duration: 0.3, ease: 'power2.in' })
-      gsap.to(sheet, { yPercent: 100, duration: reduced() ? 0 : 0.38, ease: 'power3.in', onComplete: () => gsap.set(sheet, { visibility: 'hidden' }) })
+      gsap.to(sheet, { yPercent: 100, duration: reduced() ? 0 : 0.38, ease: 'power3.in', onComplete: () => { gsap.set(sheet, { visibility: 'hidden' }); rest(sheet) } })
     } else {
       gsap.set(scrim, { autoAlpha: 0 })
       gsap.set(sheet, { yPercent: 100, visibility: 'hidden' })
+      rest(sheet)
     }
     mounted.current = true
   }, [open])

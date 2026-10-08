@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E\")"
 
@@ -47,13 +49,11 @@ function Monolith() {
           boxShadow: `inset -1px 0 0 ${c('glass', 0.14)}, inset 0 -1px 0 ${c('glass', 0.1)}`,
         }}
       >
-        {/* a reflection in the glass, drifting against the visitor's light */}
+        {/* a reflection in the glass, drifting against the room's light (usePointerField) */}
         <div
+          data-field="glass"
           className="absolute inset-y-0 left-[-80%] w-[260%] will-change-transform"
-          style={{
-            transform: 'translate3d(calc(var(--dx, 0) * -10%), 0, 0)',
-            background: `linear-gradient(104deg, transparent 38%, ${c('glass', 0.07)} 46%, transparent 54%)`,
-          }}
+          style={{ background: `linear-gradient(104deg, transparent 38%, ${c('glass', 0.07)} 46%, transparent 54%)` }}
         />
       </div>
       {/* the second, quieter edge of the slab */}
@@ -142,8 +142,8 @@ function Rock() {
   )
 }
 
-/** Everything behind the piece. */
-export function SceneBack() {
+/** Everything behind the piece. (Memoised, like the rest of the set: it never changes, so a change of piece never redraws it.) */
+export const SceneBack = memo(function SceneBack() {
   return (
     <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 h-[100svh] overflow-hidden lg:h-full ${GEOMETRY}`}>
       <div
@@ -175,11 +175,12 @@ export function SceneBack() {
           }}
         />
       ))}
-      {/* the visitor's light, once they reach for the piece */}
+      {/* the room's light, drifting on its own and reaching for the visitor's pointer (usePointerField) */}
       <div
+        data-field="light"
         className="absolute left-[-50%] top-[-50%] h-[200%] w-[200%] will-change-transform"
         style={{
-          transform: 'translate3d(calc((var(--lx, 0.5) - 0.5) * 50%), calc((var(--ly, 0.42) - 0.5) * 50%), 0)',
+          transform: 'translate3d(0, -4%, 0)',
           background: `radial-gradient(16% 16% at 50% 50%, ${c('light', 0.08)} 0%, transparent 100%)`,
         }}
       />
@@ -223,10 +224,10 @@ export function SceneBack() {
       />
     </div>
   )
-}
+})
 
-/** Mist in front of the piece's hem, the edges closing in, grain, and the house lights. */
-export function SceneFront() {
+/** Mist in front of the piece's hem, the edges closing in, and grain. */
+export const SceneFront = memo(function SceneFront() {
   return (
     <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 z-[12] h-[100svh] overflow-hidden lg:h-full ${GEOMETRY}`}>
       <div
@@ -249,10 +250,11 @@ export function SceneFront() {
       />
       {/* focus: the edges close in, more so while the closer look is open */}
       <div
+        data-focus-vignette
         className="absolute inset-0"
         style={{
           background: `radial-gradient(120% 100% at 50% 45%, transparent 42%, ${c('bg0', 0.85)} 100%)`,
-          opacity: 'calc(0.7 + var(--sr-focus, 0) * 0.3)',
+          opacity: 0.7,
         }}
       />
       <div className="absolute -inset-[12%] opacity-[0.045]" style={{ backgroundImage: GRAIN, animation: 'grain-shift 8s steps(5) infinite' }} />
@@ -260,15 +262,12 @@ export function SceneFront() {
       <div className="absolute inset-x-0 bottom-0 h-[16%] lg:hidden" style={{ background: `linear-gradient(to bottom, transparent, ${c('bg0')})` }} />
     </div>
   )
-}
+})
 
-/** The house lights: a product change happens in the dark, the way it would on a stage. */
-export function HouseLights() {
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-[13] bg-black"
-      style={{ opacity: 'calc(var(--sr-dim, 0) * 0.8)' }}
-    />
-  )
-}
+/**
+ * The house lights: a product change happens in the dark, the way it would on
+ * a stage. Dark (0.8) when the showroom first draws; the showroom fades them.
+ */
+export const HouseLights = memo(function HouseLights() {
+  return <div data-house-lights aria-hidden="true" className="pointer-events-none fixed inset-0 z-[13] bg-black" style={{ opacity: 0.8 }} />
+})

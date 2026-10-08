@@ -322,6 +322,17 @@ button {
   100% { transform: translateY(320%); opacity: 0; }
 }
 
+/* a closed panel, skipped entirely until it opens (src/lib/rest.js) */
+.at-rest {
+  content-visibility: hidden;
+}
+
+/* the room changing colour all at once (Showroom, relightNow): nothing eases into it */
+.relighting,
+.relighting * {
+  transition: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -471,8 +482,12 @@ button {
 /* ------------------------------------------------------------------
    THE LOUPE (Loupe.jsx) — the way in to the photographs, and the hand over
    a piece: the four corners of a viewfinder round a small cut stone. At
-   rest it hunts for focus now and then, by a pixel or two; a hand near it
-   brings the corners in on the stone and lights it; a press shuts them.
+   rest it hunts for focus now and then, the way a lens breathes while it
+   searches — the whole loupe, by a pixel or two (it is one transform on one
+   element, so the compositor runs it and the page itself stays asleep; the
+   corners moving one by one could only be redrawn, every frame, forever); a
+   hand near it brings the corners in on the stone and lights it; a press
+   shuts them.
    ------------------------------------------------------------------ */
 .loupe {
   --focus: 0px;
@@ -484,14 +499,14 @@ button {
   transform: translate(calc(var(--x) * var(--focus)), calc(var(--y) * var(--focus)));
   transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.loupe-hunt .loupe-corner > path {
+.loupe-hunt {
   animation: loupe-hunt 7s cubic-bezier(0.45, 0, 0.2, 1) infinite;
 }
 @keyframes loupe-hunt {
-  0%, 64%, 100% { transform: translate(0, 0); }
-  71% { transform: translate(calc(var(--x) * 2px), calc(var(--y) * 2px)); }
-  77% { transform: translate(calc(var(--x) * -0.6px), calc(var(--y) * -0.6px)); }
-  83% { transform: translate(calc(var(--x) * 1px), calc(var(--y) * 1px)); }
+  0%, 64%, 100% { transform: scale(1); }
+  71% { transform: scale(1.11); }
+  77% { transform: scale(0.97); }
+  83% { transform: scale(1.055); }
 }
 .loupe-gem {
   transform-box: fill-box;

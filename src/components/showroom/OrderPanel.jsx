@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { BRAND, INSTAGRAM, LANGUAGES, buildOrder, instagramUrl, money, newRef, orderMessage, recordOrder, whatsappUrl } from '../../data/order.js'
 import Plate from '../ui/Plate.jsx'
 import { sound } from '../../lib/sound/index.js'
+import { rest } from '../../lib/rest.js'
 
 const ink = (a = 1) => `rgb(var(--sr-ink) / ${a})`
 const FORM_KEY = 'hs-order-form'
@@ -132,8 +133,9 @@ export default function OrderPanel({ open, product, size, onClose }) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const phone = window.matchMedia('(max-width: 767px)').matches
     // back to the first step once it has gone, out of sight
-    const reset = () => { gsap.set(root, { visibility: 'hidden' }); setStep('details'); setTried(false); setCopied(null); setGeo({ status: 'idle', coords: null }); askedRef.current = false }
+    const reset = () => { gsap.set(root, { visibility: 'hidden' }); rest(root); setStep('details'); setTried(false); setCopied(null); setGeo({ status: 'idle', coords: null }); askedRef.current = false }
     if (open) {
+      rest(root, false)
       gsap.set(root, { visibility: 'visible' })
       if (reduced) { gsap.set([panel, scrim], { opacity: 1, clearProps: 'transform,filter' }); return }
       gsap.fromTo(scrim, { opacity: 0 }, { opacity: 1, duration: 0.6, ease: 'power2.out' })
@@ -144,7 +146,7 @@ export default function OrderPanel({ open, product, size, onClose }) {
       )
       return
     }
-    if (!mounted.current) { mounted.current = true; gsap.set(root, { visibility: 'hidden' }); return }
+    if (!mounted.current) { mounted.current = true; gsap.set(root, { visibility: 'hidden' }); rest(root); return }
     if (reduced) { gsap.delayedCall(0, reset); return }
     gsap.to(scrim, { opacity: 0, duration: 0.45, ease: 'power2.in' })
     gsap.to(panel, {

@@ -1,5 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { sound } from '../../lib/sound/index.js'
+import { frameSrc, prefersLargeFrames } from './frames.js'
 
 /**
  * A garment you can turn, built from its real photographs.
@@ -163,12 +164,6 @@ function loadImage(src) {
     img.src = src
   })
 }
-
-/** Which frames suit this screen: the large ones on a desk, the light ones on a phone. */
-export function frameSrc(turn, large) {
-  return `${turn}${large ? '@2' : ''}.webp`
-}
-export const prefersLargeFrames = () => window.matchMedia('(min-width: 1024px)').matches
 
 export default function Turntable({ views, fallbackSrc, ref, onFrame, onInteract, onReady, intro = true }) {
   const wrapRef = useRef(null)
