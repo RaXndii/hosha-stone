@@ -241,6 +241,7 @@ adminRouter.post('/products/:id/duplicate', async (req, res) => {
     // its film is copied with the photographs; the details marked on it point at the copy's own photographs
     const film = readFilm(row)
     if (film) db.prepare('UPDATE products SET film = ? WHERE id = ?').run(JSON.stringify(Object.fromEntries(Object.entries(film).map(([k, v]) => [k, typeof v === 'string' ? rewrite(v) : v]))), nid)
+    if (row.stage) db.prepare('UPDATE products SET stage = ? WHERE id = ?').run(row.stage, nid)
     if (row.inside) db.prepare('UPDATE products SET inside = ? WHERE id = ?').run(row.inside.replaceAll(`/media/${row.id}/`, `/media/${nid}/`), nid)
     const spots = (() => { try { return JSON.parse(row.spots || 'null') } catch { return null } })()
     if (Array.isArray(spots)) db.prepare('UPDATE products SET spots = ? WHERE id = ?').run(JSON.stringify(spots.map((sp) => ({ ...sp, photo: sp.photo ? newId[sp.photo] ?? null : null }))), nid)

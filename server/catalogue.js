@@ -97,6 +97,7 @@ export function publicProduct(row) {
     film: filmOf(row),
     spots: spotsOf(row, images),
     inside: insideOf(row),
+    ...(row.stage === 'flip' ? { stage: 'flip' } : {}),
     gallery: images.map((i) => {
       const v = VIEWS[i.view] ?? VIEWS.front
       const angleFree = v.kind === 'garment' && i.turn && !seenAngle.has(v.angle)
@@ -166,6 +167,7 @@ export function adminProduct(row) {
     images: images.map((i) => ({ id: i.id, view: i.view, label: i.label, src: i.src, thumb: i.thumb ?? i.src, turn: i.turn, primary: !!i.is_primary, width: i.width, height: i.height })),
     film: parse(row.film),
     inside: parse(row.inside),
+    stage: row.stage || null,
     spots: (parse(row.spots) ?? []).map((sp) => ({ at: sp.at, label: sp.label, note: sp.note || '', photo: images.some((i) => i.id === sp.photo) ? sp.photo : null })),
     theme: themeFor(row, images),
   }

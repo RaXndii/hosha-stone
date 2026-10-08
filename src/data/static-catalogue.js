@@ -62,6 +62,11 @@
  *   receives it once, on the next start (server/seed.js); a piece the house
  *   later deletes in /admin is not brought back.
  *
+ * stage (optional)
+ *   'flip': Look closer shows the front and turns it over to the back when
+ *   the back is chosen (or on a swipe), instead of turning it freely through
+ *   every angle (Flip.jsx). Needs a front (0) and a back (180).
+ *
  * inside (optional)
  *   A piece that opens: Look closer gives its zip a pull, and drawing it
  *   down shows the inside (Unzip.jsx). { src (the piece laid open, cut
@@ -94,6 +99,8 @@ export const STATIC_PRODUCTS = [
   {
     id: 'midnight-007m',
     since: 4,
+    // Look closer turns it over between front and back, rather than spinning it
+    stage: 'flip',
     colour: 'Navy',
     badge: 'New',
     number: '007',

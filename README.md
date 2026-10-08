@@ -100,6 +100,12 @@ on.
   to move, swipe for the next.
 - **The film**, if the piece has one, has its own card among them and opens
   out of it.
+- **A piece can turn over instead of spinning** (`stage: 'flip'`, the
+  Midnight Harrington): it shows its front, and choosing Back (or a
+  sideways swipe, or an arrow key) lifts it and turns it over in depth onto
+  its real back photograph, a sheen crossing the cloth as it goes. Nothing
+  in between is ever held still, so nothing is shown that was not
+  photographed (`src/components/showroom/Flip.jsx`).
 - **A piece that opens** (the Midnight Harrington) has a pull on its zip.
   Drag it down and the jacket parts from the collar to show its inside,
   with the details inside marked; let go past a third of the way and it

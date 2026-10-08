@@ -147,6 +147,13 @@ const MIGRATIONS = [
   `
   ALTER TABLE products ADD COLUMN inside TEXT;
   `,
+  // how Look closer shows the piece: null turns it freely; 'flip' turns it
+  // over between its front and its back when asked. The Midnight Harrington,
+  // already in a database by now, is shown that way.
+  `
+  ALTER TABLE products ADD COLUMN stage TEXT;
+  UPDATE products SET stage = 'flip' WHERE slug = 'midnight-007m';
+  `,
 ]
 
 const { user_version: version } = db.prepare('PRAGMA user_version').get()

@@ -4,6 +4,7 @@ import { clock, details as detailsOf, spotsOf, turnViews } from '../../data/show
 import Turntable from './Turntable.jsx'
 import Lens from './Lens.jsx'
 import Unzip from './Unzip.jsx'
+import Flip from './Flip.jsx'
 import Plate from '../ui/Plate.jsx'
 import { sound } from '../../lib/sound/index.js'
 
@@ -121,6 +122,9 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
   const film = product.film
   const inside = product.inside
   const canTurn = views.length > 1
+  // a piece shown front and back turns over when asked, instead of spinning freely
+  const flip = product.stage === 'flip' && product.gallery.some((g) => g.kind === 'garment' && g.angle === 180 && !!g.turn)
+  const [side, setSide] = useState(0)
   const front = views.find((v) => v.angle === 0) ?? views[0]
   const photo = view.kind === 'photo' ? extra[view.i] : null
   const spotNow = view.kind === 'photo' ? (view.spot != null ? spots[view.spot] : null) : spot != null ? spots[spot] : null
@@ -278,7 +282,11 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
     dialRef.current?.setAttribute('transform', `rotate(${(-theta).toFixed(2)})`)
     // the room's light drifts a little as the piece turns, as it would round a real object
     rootRef.current?.style.setProperty('--tt-x', Math.sin((theta * Math.PI) / 180).toFixed(3))
-    const name = facingName(theta)
+    if (flip) {
+      const now = theta > 90 && theta < 270 ? 180 : 0
+      setSide((was) => (was === now ? was : now))
+    }
+    const name = flip ? (theta > 90 && theta < 270 ? 'Back' : 'Front') : facingName(theta)
     if (nameRef.current && name !== lastName.current) {
       lastName.current = name
       nameRef.current.textContent = name
@@ -309,7 +317,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
     }
     // gone back out from a detail (the zoom is headed home): the detail is let go
     if (spotRef.current !== null && target <= 1.001) setSpot(null)
-  }, [spots, inside])
+  }, [spots, inside, flip])
 
   const onLensZoom = useCallback((z) => {
     if (zoomRef.current) zoomRef.current.textContent = `${Math.round(z * 100)}%`
@@ -323,6 +331,9 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
     ? touch ? (extra.length > 1 ? 'Pinch to go close · Swipe for the next' : 'Pinch or double-tap to go close') : 'Scroll or double-click to go close'
     : view.kind === 'open'
       ? zipOpen ? (touch ? 'Tap a mark · Drag the pull up to close it' : 'A mark opens its detail · Drag the pull up to close it') : 'Drag the pull down to open it'
+      : flip
+        ? side === 180 ? (touch ? 'Swipe to turn it back' : 'Front turns it back · Scroll to go close')
+          : inside ? (touch ? 'Swipe to turn · Pull the zip to open' : 'Pull the zip down to open it · Scroll to go close') : (touch ? 'Swipe to turn · Pinch to go close' : 'Scroll or double-click to go close')
       : inside
         ? touch ? 'Drag to turn · Pull the zip down to open it' : 'Drag to turn · Pull the zip down to open it'
         : canTurn
@@ -448,14 +459,18 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
         <div ref={frameRef} className="closer-stage relative min-h-0 flex-1 lg:absolute lg:inset-x-[max(19vw,264px)] lg:bottom-[calc(122px+env(safe-area-inset-bottom))] lg:top-[84px]">
           {armed && front && (
             <div className="absolute inset-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ opacity: photo || view.kind === 'open' ? 0 : 1, transform: photo ? 'scale(0.96)' : 'none', pointerEvents: photo || view.kind === 'open' ? 'none' : 'auto', transition: instant ? 'none' : undefined }}>
-              <Turntable
-                key={product.id}
-                ref={ttRef}
-                views={views}
-                fallbackSrc={front.src}
-                onFrame={onFrame}
-                onInteract={() => setMoved(true)}
-              />
+              {flip ? (
+                <Flip key={product.id} ref={ttRef} views={views} fallbackSrc={front.src} onFrame={onFrame} onInteract={() => setMoved(true)} />
+              ) : (
+                <Turntable
+                  key={product.id}
+                  ref={ttRef}
+                  views={views}
+                  fallbackSrc={front.src}
+                  onFrame={onFrame}
+                  onInteract={() => setMoved(true)}
+                />
+              )}
               {/* the details, marked where they are on the piece */}
               {spots.map((sp, k) => (
                 <button
@@ -598,7 +613,28 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
               </div>
             ) : (
               <>
-                {canTurn && <Dial views={views} dialRef={dialRef} />}
+                {flip ? (
+                  /* front or back: the piece turns over to the one chosen */
+                  <div role="group" aria-label="Which side" className="pointer-events-auto relative isolate flex shrink-0 items-center p-1">
+                    <Plate cut={9} fill="rgb(var(--sr-glass) / 0.035)" edge={ink(0.16)} />
+                    {[[0, 'Front'], [180, 'Back']].map(([a, label]) => {
+                      const on = side === a
+                      return (
+                        <button
+                          key={a}
+                          data-sound="none"
+                          onClick={() => ttRef.current?.turnTo(a)}
+                          aria-pressed={on}
+                          className="relative isolate grid h-11 min-w-[4.4rem] place-items-center px-3 text-[9.5px] font-medium uppercase tracking-[0.3em] transition-colors duration-500 lg:h-9"
+                          style={{ color: on ? 'rgb(var(--sr-bg0))' : ink(0.7) }}
+                        >
+                          <span aria-hidden="true" className="facet absolute inset-0 -z-10 transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] [--cut:7px]" style={{ background: 'rgb(var(--sr-neon))', boxShadow: '0 0 14px rgb(var(--sr-neon) / 0.6)', opacity: on ? 1 : 0, transform: on ? 'scale(1)' : 'scale(0.85)' }} />
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : canTurn && <Dial views={views} dialRef={dialRef} />}
                 <div className="min-w-[9.5rem]">
                   <p ref={nameRef} className="text-[10px] font-medium uppercase tracking-[0.32em]" style={{ color: ink(0.9) }}>
                     {canTurn ? 'Front' : 'Front view'}
@@ -609,7 +645,7 @@ export default function Closer({ open, armed, product, onClose, sourceRef, purch
                     style={{ color: ink(0.42), opacity: moved && !spots.length ? 0 : 1, transform: moved && !spots.length ? 'translateY(4px)' : 'none' }}
                     aria-hidden={moved && !spots.length}
                   >
-                    {spots.length ? (moved ? (touch ? 'Tap a mark for its detail' : 'A mark opens its detail') : hint) : hint}
+                    {spots.length && !(flip && side === 180) ? (moved ? (touch ? 'Tap a mark for its detail' : 'A mark opens its detail') : hint) : hint}
                   </p>
                 </div>
               </>
