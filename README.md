@@ -147,6 +147,14 @@ the next start the server adds it once, featured and first in the room,
 under the number it was written with unless that number is taken. Delete it
 in the admin and it stays deleted, because it is only ever added once.
 
+A piece can also take another's place: give it `replaces: '<slug>'` with its
+`since`. On the next start the old piece is deleted (with its uploaded
+photographs and film) and the new one stands where it stood, under its
+number, once. The Navy Zip Jacket arrived this way (`since: 3`), photographed
+again flat with its details marked and a film, keeping its address
+(`/piece/zip-021n`) so links already shared still open it. Orders keep the
+number and name they were placed under.
+
 ## Sound
 
 The site has its own music and a sound for every touch. None of it is a

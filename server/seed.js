@@ -1,4 +1,5 @@
 import { db, getContent, setContent, tx } from './db.js'
+import { removeProductMedia } from './media.js'
 import { STATIC_CATEGORIES, STATIC_PRODUCTS } from '../src/data/static-catalogue.js'
 
 export const DEFAULT_ABOUT = {
@@ -96,16 +97,38 @@ export function seedIfEmpty() {
  * Pieces added to the bundled catalogue after this database was made arrive
  * once, on the next start, first in the room. A piece the house has since
  * deleted in /admin is not brought back: each revision is offered only once.
+ *
+ * A piece that `replaces` another (by its slug) takes that piece's place
+ * instead: the old one, its photographs and its film are deleted, and the
+ * new one stands where it stood, under its number. Orders keep the old
+ * piece's number and name as they were written.
  * → the names of the pieces added
  */
 export function addNewPieces() {
   const have = getContent('catalogueRevision', 1)
   if (have >= REVISION) return []
-  const fresh = STATIC_PRODUCTS.filter((p) => (p.since ?? 1) > have && !db.prepare('SELECT 1 FROM products WHERE slug = ?').get(p.id))
+  const bySlug = (slug) => db.prepare('SELECT id, number, position, featured FROM products WHERE slug = ?').get(slug)
+  const due = STATIC_PRODUCTS.filter((p) => (p.since ?? 1) > have)
+  const fresh = due.filter((p) => !p.replaces && !bySlug(p.id))
+  const renewed = due.filter((p) => p.replaces)
+  const gone = []
   tx(() => {
     const top = db.prepare('SELECT COALESCE(MIN(position), 0) AS p FROM products').get().p
     fresh.forEach((p, i) => insertPiece(p, { position: top - fresh.length + i, featured: true }))
+    for (const p of renewed) {
+      const old = bySlug(p.replaces)
+      if (old) {
+        db.prepare('DELETE FROM products WHERE id = ?').run(old.id)
+        gone.push(old.id)
+      }
+      // a piece of the same slug left behind would stop the new one: it goes too
+      const clash = p.id !== p.replaces && bySlug(p.id)
+      if (clash) { db.prepare('DELETE FROM products WHERE id = ?').run(clash.id); gone.push(clash.id) }
+      const last = db.prepare('SELECT COALESCE(MAX(position), 0) AS p FROM products').get().p
+      insertPiece(old ? { ...p, number: old.number } : p, { position: old ? old.position : last + 1, featured: old ? !!old.featured : false })
+    }
     setContent('catalogueRevision', REVISION)
   })
-  return fresh.map((p) => p.name)
+  for (const id of gone) removeProductMedia(id).catch(() => {})
+  return [...fresh, ...renewed].map((p) => p.name)
 }

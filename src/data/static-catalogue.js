@@ -61,6 +61,11 @@
  *   The catalogue revision a piece arrived in. A database made before it
  *   receives it once, on the next start (server/seed.js); a piece the house
  *   later deletes in /admin is not brought back.
+ *
+ * replaces (optional, with since)
+ *   The slug of a piece this one takes the place of. In a database made
+ *   before it, that piece is deleted and this one stands where it stood,
+ *   under its number — once, like any new piece.
  */
 
 export const STATIC_CATEGORIES = [
@@ -260,14 +265,19 @@ export const STATIC_PRODUCTS = [
     ],
   },
   {
+    // photographed again, flat, with its details: it replaces the earlier
+    // navy jacket in a database that already has it (see server/seed.js)
     id: 'zip-021n',
+    since: 3,
+    replaces: 'zip-021n',
     colour: 'Navy',
+    badge: 'New',
     number: '004',
     category: 'jackets',
     name: 'Navy Zip Jacket',
     code: '021N',
     line: 'Navy',
-    description: 'A clean zip-front jacket in deep navy cloth. Light, sharp and made to sit easily over anything.',
+    description: 'A clean zip-front jacket in deep navy cloth. A two-way metal zip, with a pull at the collar and another at the hem; a point collar over a quilted lining; slim welt pockets either side; a band across the hem, and cuffs that close with a snap.',
     short: 'Navy zip',
     tagline: 'Quietly sharp.',
     price: 64,
@@ -293,12 +303,28 @@ export const STATIC_PRODUCTS = [
       ink: [240, 244, 251],
       ink2: [142, 154, 182],
     },
+    // the front alone, as photographed: Look closer shows it still, to go
+    // close on, with its details marked; no turning
     gallery: [
       { id: 'front', label: 'Front view', kind: 'garment', src: '/navy-hero.webp', angle: 0, turn: '/tt/navy-front' },
-      { id: 'back', label: 'Back view', kind: 'garment', src: '/navy-back.webp', angle: 180, turn: '/tt/navy-back' },
-      { id: 'left', label: 'Left side view', kind: 'garment', src: '/navy-left.webp', angle: 90, turn: '/tt/navy-left' },
-      { id: 'right', label: 'Right side view', kind: 'garment', src: '/navy-right.webp', angle: 270, turn: '/tt/navy-right' },
+      { id: 'pocket', label: 'Pocket & cuff', kind: 'print', src: '/navy-pocket.webp', focus: '50% 50%' },
     ],
+    spots: [
+      { id: 'collar', at: [0.43, 0.085], label: 'Point collar', note: 'A point collar, with a quilted lining inside.' },
+      { id: 'top', at: [0.5, 0.205], label: 'Top pull', note: 'The zip’s first pull closes the jacket up to the collar.' },
+      { id: 'pocket', at: [0.235, 0.6], label: 'Welt pockets', note: 'Two, set slim into the body, one either side.', photo: 'pocket' },
+      { id: 'hem', at: [0.3, 0.865], label: 'Hem band', note: 'A band across the hem keeps it short and clean.' },
+      { id: 'bottom', at: [0.5, 0.945], label: 'Bottom pull', note: 'A second pull at the hem: open it from below for room as you sit.' },
+      { id: 'cuff', at: [0.92, 0.95], label: 'Snap cuffs', note: 'Each cuff closes with a snap.', photo: 'pocket' },
+    ],
+    film: {
+      src: '/film/navy-720.mp4',
+      small: '/film/navy-480.mp4',
+      webm: '/film/navy-720.webm',
+      poster: '/film/navy-poster.webp',
+      cover: '/film/navy-cover.webp',
+      duration: 10,
+    },
   },
   {
     id: 'harrington-031s',
